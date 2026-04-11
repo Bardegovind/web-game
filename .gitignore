@@ -1,0 +1,16 @@
+# Node
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+
+# Environment
+.env
+backend/.env
+
+# IDES
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db

@@ -1,0 +1,228 @@
+require('dotenv').config();
+
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const path = require('path');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+
+// Config
+const connectDB = require('./config/db');
+
+// Models
+const MasterPassword = require('./models/MasterPassword');
+const Message = require('./models/Message');
+const ChamberUser = require('./models/ChamberUser');
+
+// Routes
+const authRoutes = require('./routes/auth.routes');
+const galleryRoutes = require('./routes/gallery.routes');
+const chatRoutes = require('./routes/chat.routes');
+
+// Initialize Express
+const app = express();
+const server = http.createServer(app);
+
+// Initialize Socket.IO
+const io = new Server(server, {
+    cors: {
+        origin: '*', // Allow all origins (for development)
+        methods: ['GET', 'POST'],
+    },
+});
+
+// ========================
+// MIDDLEWARE
+// ========================
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve frontend static files
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
+
+// ========================
+// API ROUTES
+// ========================
+app.use('/api/auth', authRoutes);
+app.use('/api/gallery', galleryRoutes);
+app.use('/api/chat', chatRoutes);
+
+// Health check
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Serve frontend for all non-API routes (SPA fallback)
+app.get('{*path}', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
+});
+
+// ========================
+// SOCKET.IO — REAL-TIME CHAT
+// ========================
+
+// Authenticate socket connections with JWT
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+
+    if (!token) {
+        return next(new Error('Authentication required'));
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.user = decoded; // { username, iat, exp }
+        next();
+    } catch (error) {
+        return next(new Error('Invalid token'));
+    }
+});
+
+io.on('connection', async (socket) => {
+    const username = socket.user.username;
+    console.log(`🟢 ${username} connected (socket: ${socket.id})`);
+
+    // Register/update user in DB
+    await ChamberUser.findOneAndUpdate(
+        { username },
+        { isOnline: true, socketId: socket.id, lastSeen: new Date() },
+        { upsert: true, new: true }
+    );
+
+    // Broadcast updated user list to all connected clients
+    const onlineUsers = await ChamberUser.find({ isOnline: true }, { username: 1, isOnline: 1 });
+    io.emit('users:online', onlineUsers);
+
+    // ---- SEND MESSAGE ----
+    socket.on('message:send', async (data) => {
+        try {
+            const { receiver, text, type, fileUrl } = data;
+
+            if (!receiver) return;
+
+            // Save message to DB
+            const message = await Message.create({
+                sender: username,
+                receiver: receiver.toLowerCase(),
+                text: text ? text.trim() : '',
+                type: type || 'text',
+                fileUrl: fileUrl || null
+            });
+
+            const msgData = {
+                _id: message._id,
+                sender: message.sender,
+                receiver: message.receiver,
+                text: message.text,
+                type: message.type,
+                fileUrl: message.fileUrl,
+                createdAt: message.createdAt,
+            };
+
+            // Send to receiver if online
+            const receiverUser = await ChamberUser.findOne({ username: receiver.toLowerCase() });
+
+            if (receiverUser && receiverUser.socketId) {
+                io.to(receiverUser.socketId).emit('message:receive', msgData);
+            }
+
+            // Confirm delivery to sender
+            socket.emit('message:sent', msgData);
+        } catch (error) {
+            console.error('Message send error:', error);
+            socket.emit('message:error', { message: 'Failed to send message.' });
+        }
+    });
+
+    // ---- TYPING INDICATOR ----
+    socket.on('typing:start', async (data) => {
+        const receiverUser = await ChamberUser.findOne({ username: data.receiver });
+        if (receiverUser && receiverUser.socketId) {
+            io.to(receiverUser.socketId).emit('typing:start', { sender: username });
+        }
+    });
+
+    socket.on('typing:stop', async (data) => {
+        const receiverUser = await ChamberUser.findOne({ username: data.receiver });
+        if (receiverUser && receiverUser.socketId) {
+            io.to(receiverUser.socketId).emit('typing:stop', { sender: username });
+        }
+    });
+
+    // ---- DISCONNECT ----
+    socket.on('disconnect', async () => {
+        console.log(`🔴 ${username} disconnected`);
+
+        await ChamberUser.findOneAndUpdate(
+            { username },
+            { isOnline: false, socketId: null, lastSeen: new Date() }
+        );
+
+        // Broadcast updated user list
+        const onlineUsers = await ChamberUser.find({ isOnline: true }, { username: 1, isOnline: 1 });
+        io.emit('users:online', onlineUsers);
+    });
+});
+
+// ========================
+// SEED MASTER PASSWORD
+// ========================
+const seedMasterPassword = async () => {
+    try {
+        const plainPassword = process.env.MASTER_PASSWORD;
+
+        if (!plainPassword) {
+            console.error('❌ MASTER_PASSWORD not set in .env file!');
+            process.exit(1);
+        }
+
+        const existing = await MasterPassword.findOne();
+
+        if (!existing) {
+            // First time — hash and store
+            const salt = await bcrypt.genSalt(12);
+            const hash = await bcrypt.hash(plainPassword, salt);
+            await MasterPassword.create({ passwordHash: hash });
+            console.log('🔐 Master password hashed and stored in database.');
+        } else {
+            // Check if .env password matches stored hash
+            const isMatch = await bcrypt.compare(plainPassword, existing.passwordHash);
+            if (!isMatch) {
+                // Password changed in .env — update the hash
+                const salt = await bcrypt.genSalt(12);
+                const hash = await bcrypt.hash(plainPassword, salt);
+                existing.passwordHash = hash;
+                await existing.save();
+                console.log('🔐 Master password updated to match .env.');
+            } else {
+                console.log('🔐 Master password is up to date.');
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error seeding master password:', error);
+    }
+};
+
+// ========================
+// START SERVER
+// ========================
+const PORT = process.env.PORT || 5000;
+
+const startServer = async () => {
+    // Connect to MongoDB
+    await connectDB();
+
+    // Seed master password on first run
+    await seedMasterPassword();
+
+    server.listen(PORT, () => {
+        console.log(`\n🚀 Server running on http://localhost:${PORT}`);
+        console.log(`📡 Socket.IO ready for connections`);
+        console.log(`🎮 Game: http://localhost:${PORT}\n`);
+    });
+};
+
+startServer();

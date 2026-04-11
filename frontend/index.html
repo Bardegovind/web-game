@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tic Tac Toe</title>
+    <meta name="description" content="Play Tic Tac Toe with a friend — classic X and O game">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <!-- Background Effects -->
+    <div class="bg-effects" aria-hidden="true">
+        <div class="particle p1"></div>
+        <div class="particle p2"></div>
+        <div class="particle p3"></div>
+        <div class="particle p4"></div>
+        <div class="particle p5"></div>
+        <div class="particle p6"></div>
+        <div class="particle p7"></div>
+        <div class="particle p8"></div>
+        <div class="scan-line"></div>
+    </div>
+    <!-- ========================
+         GAME VIEW
+         ======================== -->
+    <div id="game-view" class="view active">
+        <!-- Hidden tap zones (invisible) -->
+        <div id="hidden-tap-1" class="hidden-tap top-left" data-tap="1"></div>
+        <div id="hidden-tap-2" class="hidden-tap top-right" data-tap="2"></div>
+        <div id="hidden-tap-3" class="hidden-tap bottom-right" data-tap="3"></div>
+
+        <div class="game-container">
+            <!-- Header -->
+            <div class="game-header">
+                <h1 class="game-title">Tic Tac Toe</h1>
+                <p class="game-subtitle" id="game-status">Player X's Turn</p>
+            </div>
+
+            <!-- Scoreboard -->
+            <div class="scoreboard">
+                <div class="score-card x-score">
+                    <span class="score-label">Player X</span>
+                    <span class="score-value" id="score-x">0</span>
+                    <span class="score-tag win-tag">WINS</span>
+                </div>
+                <div class="score-card draw-score">
+                    <span class="score-label">Draw</span>
+                    <span class="score-value" id="score-draw">0</span>
+                    <span class="score-tag draw-tag">TIES</span>
+                </div>
+                <div class="score-card o-score">
+                    <span class="score-label">Player O</span>
+                    <span class="score-value" id="score-o">0</span>
+                    <span class="score-tag win-tag">WINS</span>
+                </div>
+            </div>
+
+            <!-- Board -->
+            <div class="board" id="board">
+                <div class="cell" data-cell="0"></div>
+                <div class="cell" data-cell="1"></div>
+                <div class="cell" data-cell="2"></div>
+                <div class="cell" data-cell="3"></div>
+                <div class="cell" data-cell="4"></div>
+                <div class="cell" data-cell="5"></div>
+                <div class="cell" data-cell="6"></div>
+                <div class="cell" data-cell="7"></div>
+                <div class="cell" data-cell="8"></div>
+            </div>
+
+            <!-- Result Banner (hidden by default) -->
+            <div class="result-banner" id="result-banner">
+                <div class="result-icon" id="result-icon">🏆</div>
+                <div class="result-text" id="result-text">Player X Wins!</div>
+            </div>
+
+            <!-- Actions -->
+            <div class="game-actions">
+                <button class="btn btn-primary" id="btn-restart">New Game</button>
+                <button class="btn btn-secondary" id="btn-reset-scores">Reset Scores</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== -->
+    <!-- PASSWORD MODAL -->
+    <!-- ==================== -->
+    <div id="password-modal" class="modal-overlay">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div class="modal-icon">🔐</div>
+                <h2 class="modal-title">Enter Password</h2>
+                <p class="modal-subtitle">Access requires authentication</p>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <input type="text" id="input-username" class="input-field" placeholder="Username" autocomplete="off"
+                        spellcheck="false">
+                </div>
+                <div class="input-group">
+                    <input type="password" id="input-password" class="input-field" placeholder="Password"
+                        autocomplete="off">
+                </div>
+                <div class="modal-error" id="modal-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary btn-full" id="btn-submit-password">Enter</button>
+                <button class="btn btn-ghost" id="btn-cancel-password">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== -->
+    <!-- SECRET CHAMBER VIEW -->
+    <!-- ==================== -->
+    <div id="chamber-view" class="view">
+        <div class="chamber-container">
+            <!-- Chamber Header -->
+            <div class="chamber-header">
+                <div class="chamber-header-left">
+                    <h1 class="chamber-title">Secret Chamber</h1>
+                    <span class="chamber-user" id="chamber-username">@user</span>
+                </div>
+                <div class="chamber-header-right">
+                    <button class="btn btn-ghost btn-sm" id="btn-exit-chamber">✕ Exit</button>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="tab-nav">
+                <button class="tab-btn active" data-tab="gallery">
+                    <span class="tab-icon">🖼️</span> Gallery
+                </button>
+                <button class="tab-btn" data-tab="chat">
+                    <span class="tab-icon">💬</span> Chat
+                    <span class="chat-badge" id="chat-badge" style="display:none;">0</span>
+                </button>
+            </div>
+
+            <!-- GALLERY TAB -->
+            <div class="tab-content active" id="tab-gallery">
+                <div class="gallery-toolbar">
+                    <h2 class="section-title">Gallery</h2>
+                    <label class="btn btn-primary btn-sm upload-btn">
+                        📷 Upload
+                        <input type="file" id="gallery-upload" accept="image/*" style="display:none;">
+                    </label>
+                </div>
+                <div class="upload-progress" id="upload-progress" style="display:none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <span class="progress-text">Uploading...</span>
+                </div>
+                <div class="gallery-grid" id="gallery-grid"></div>
+                <div class="gallery-empty" id="gallery-empty">
+                    <div class="empty-icon">🖼️</div>
+                    <p>No images yet. Upload your first photo!</p>
+                </div>
+            </div>
+
+            <!-- CHAT TAB -->
+            <div class="tab-content" id="tab-chat">
+                <div class="chat-layout">
+                    <div class="chat-sidebar" id="chat-sidebar">
+                        <h3 class="sidebar-title">Users</h3>
+                        <div class="user-list" id="user-list"></div>
+                        <div class="users-empty" id="users-empty">
+                            <p>No other users online</p>
+                        </div>
+                    </div>
+
+                    <div class="chat-area" id="chat-area">
+                        <div class="chat-placeholder" id="chat-placeholder">
+                            <div class="placeholder-icon">💬</div>
+                            <p>Select a user to start chatting</p>
+                        </div>
+
+                        <div class="chat-active" id="chat-active" style="display:none;">
+                            <div class="chat-header-bar">
+                                <span class="chat-with" id="chat-with">@username</span>
+                                <span class="typing-indicator" id="typing-indicator"
+                                    style="display:none;">typing...</span>
+                            </div>
+                            <div class="messages-container" id="messages-container"></div>
+                            <div class="chat-input-bar">
+                                <div class="emoji-picker-container">
+                                    <button class="btn btn-ghost btn-sm btn-icon" id="btn-emoji"
+                                        title="Emojis">😊</button>
+                                    <div class="emoji-picker" id="emoji-picker" style="display:none;"></div>
+                                </div>
+                                <label class="btn btn-ghost btn-sm btn-icon" title="Photos">
+                                    📷
+                                    <input type="file" id="chat-photo-input" accept="image/*" style="display:none;">
+                                </label>
+                                <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..."
+                                    autocomplete="off">
+                                <button class="btn btn-primary btn-sm" id="btn-send-message">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lightbox -->
+    <div class="lightbox-overlay" id="lightbox" style="display:none;">
+        <button class="lightbox-close" id="lightbox-close">✕</button>
+        <img class="lightbox-image" id="lightbox-image" src="" alt="Gallery image">
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/tapTracker.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/gallery.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/chamber.js"></script>
+</body>
+
+</html>
