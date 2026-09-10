@@ -39,14 +39,13 @@ const uploadImage = async (req, res) => {
 
         const { caption } = req.body;
 
-        console.log("FILE:", req.file);
-        console.log("BODY:", req.body);
-
         const galleryItem = await GalleryItem.create({
             url: req.file.path, // Cloudinary URL
             publicId: req.file.filename, // Cloudinary public ID
-            caption: caption || '',
-            uploadedBy: "admin",
+            caption: typeof caption === 'string' ? caption.slice(0, 300) : '',
+            // Who actually uploaded it, from the verified token — it used to be
+            // hardcoded, so nothing recorded who added what.
+            uploadedBy: req.user.username,
         });
 
         return res.status(201).json({

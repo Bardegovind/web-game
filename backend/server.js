@@ -31,22 +31,31 @@ const chatRoutes = require('./routes/chat.routes');
 // A message longer than this is not a message, it is a payload.
 const MAX_MESSAGE_LENGTH = 4000;
 
+// The frontend is served by this same process, so cross-origin access is not
+// needed for normal use and is off unless explicitly configured. '*' was
+// shipped with a comment saying it was for development.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
+const corsOptions = ALLOWED_ORIGINS.length > 0
+    ? { origin: ALLOWED_ORIGINS, credentials: true }
+    : { origin: false };
+
 // Initialize Express
 const app = express();
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-const io = new Server(server, {
-    cors: {
-        origin: '*', // Allow all origins (for development)
-        methods: ['GET', 'POST'],
-    },
-});
+const io = new Server(server, ALLOWED_ORIGINS.length > 0
+    ? { cors: { origin: ALLOWED_ORIGINS, methods: ['GET', 'POST'], credentials: true } }
+    : {});
 
 // ========================
 // MIDDLEWARE
 // ========================
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
