@@ -1612,3 +1612,9 @@ body::after {
         font-size: 1.1rem;
     }
 }
+/* Message text is inserted with textContent, never as markup, so line breaks
+   are preserved here rather than by converting newlines into <br> elements. */
+.message-text {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}

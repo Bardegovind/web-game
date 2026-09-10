@@ -231,13 +231,28 @@ const chat = {
 
                     const item = document.createElement('div');
                     item.className = `user-item ${this.chattingWith === user.username ? 'active' : ''}`;
-                    item.innerHTML = `
-                        <span class="user-status-dot ${isOnline ? 'online' : 'offline'}"></span>
-                        <div class="user-item-info">
-                            <span class="user-item-name">@${user.username}</span>
-                            <span class="user-status-text">${isOnline ? 'Online' : 'Offline'}</span>
-                        </div>
-                    `;
+
+                    // Nodes rather than a markup string. A username is only as
+                    // trustworthy as whoever typed it, which on the legacy
+                    // shared-password path is anyone at all.
+                    const dot = document.createElement('span');
+                    dot.className = `user-status-dot ${isOnline ? 'online' : 'offline'}`;
+
+                    const name = document.createElement('span');
+                    name.className = 'user-item-name';
+                    name.textContent = `@${user.username}`;
+
+                    const status = document.createElement('span');
+                    status.className = 'user-status-text';
+                    status.textContent = isOnline ? 'Online' : 'Offline';
+
+                    const info = document.createElement('div');
+                    info.className = 'user-item-info';
+                    info.appendChild(name);
+                    info.appendChild(status);
+
+                    item.appendChild(dot);
+                    item.appendChild(info);
                     item.addEventListener('click', () => this.openChat(user.username));
                     this.userListEl.appendChild(item);
                 });
@@ -310,28 +325,38 @@ const chat = {
     appendMessage(msg) {
         const bubble = document.createElement('div');
         bubble.id = msg._id || 'temp-' + Date.now();
-        const isSent = msg.sender === this.currentUsername;
 
-        // Media bubble if it's an image
+        const isSent = msg.sender === this.currentUsername;
         const isImage = msg.type === 'image';
         bubble.className = `message-bubble ${isSent ? 'sent' : 'received'} ${isImage ? 'media' : ''}`;
 
-        let content = '';
+        // Everything below builds nodes and sets properties. Nothing that came
+        // from another person is ever parsed as markup: a stored message runs on
+        // every open, and the token guarding the whole chamber is readable from
+        // localStorage by anything that executes here.
         if (isImage) {
-            content = `<img src="${msg.fileUrl}" class="chat-image" onclick="gallery.openLightbox('${msg.fileUrl}')">`;
+            const image = document.createElement('img');
+            image.className = 'chat-image';
+            image.src = msg.fileUrl;
+            image.alt = 'Shared photo';
+            image.addEventListener('click', () => gallery.openLightbox(msg.fileUrl));
+            bubble.appendChild(image);
         } else {
-            content = msg.text.replace(/\n/g, '<br>');
+            const body = document.createElement('span');
+            body.className = 'message-text';
+            // Line breaks are preserved by CSS (white-space: pre-wrap) rather
+            // than by turning newlines into markup.
+            body.textContent = msg.text || '';
+            bubble.appendChild(body);
         }
 
-        const time = new Date(msg.createdAt).toLocaleTimeString([], {
+        const time = document.createElement('span');
+        time.className = 'message-time';
+        time.textContent = new Date(msg.createdAt).toLocaleTimeString([], {
             hour: '2-digit',
             minute: '2-digit',
         });
-
-        bubble.innerHTML = `
-            ${content}
-            <span class="message-time">${time}</span>
-        `;
+        bubble.appendChild(time);
 
         this.messagesContainer.appendChild(bubble);
     },

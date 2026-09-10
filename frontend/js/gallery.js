@@ -76,25 +76,35 @@ const gallery = {
         this.images.forEach((img) => {
             const item = document.createElement('div');
             item.className = 'gallery-item';
-            item.innerHTML = `
-                <img src="${img.url}" alt="${img.caption || 'Gallery image'}" loading="lazy">
-                <div class="gallery-item-overlay">
-                    <span class="gallery-item-caption">${img.caption || ''}</span>
-                    <button class="gallery-delete-btn" data-id="${img._id}" title="Delete">🗑</button>
-                </div>
-            `;
 
-            // Click image to open lightbox
-            item.querySelector('img').addEventListener('click', () => {
-                this.openLightbox(img.url);
-            });
+            // Built as nodes, never as a markup string: a caption or a url is
+            // data she or you typed, and must never be parsed as code.
+            const image = document.createElement('img');
+            image.src = img.url;
+            image.alt = img.caption || 'Gallery image';
+            image.loading = 'lazy';
+            image.addEventListener('click', () => this.openLightbox(img.url));
 
-            // Delete button
-            item.querySelector('.gallery-delete-btn').addEventListener('click', (e) => {
+            const caption = document.createElement('span');
+            caption.className = 'gallery-item-caption';
+            caption.textContent = img.caption || '';
+
+            const remove = document.createElement('button');
+            remove.className = 'gallery-delete-btn';
+            remove.title = 'Delete';
+            remove.textContent = '🗑';
+            remove.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.deleteImage(img._id);
             });
 
+            const overlay = document.createElement('div');
+            overlay.className = 'gallery-item-overlay';
+            overlay.appendChild(caption);
+            overlay.appendChild(remove);
+
+            item.appendChild(image);
+            item.appendChild(overlay);
             this.gridEl.appendChild(item);
         });
     },
