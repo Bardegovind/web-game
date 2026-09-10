@@ -326,6 +326,9 @@ body::after {
     outline: none;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
+    /* Opt out of double-tap zoom: without this the browser delays or drops
+       clicks while deciding whether rapid taps were a zoom gesture. */
+    touch-action: manipulation;
 }
 
 /* Corner Mark Hints — designed to look like grid decoration, NOT buttons */

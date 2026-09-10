@@ -7,15 +7,16 @@
  */
 const chamber = {
 
+    taps: null,
+
     init() {
         // ---- HIDDEN TAP ZONES ----
-        const tap1 = document.getElementById('hidden-tap-1');
-        const tap2 = document.getElementById('hidden-tap-2');
-        const tap3 = document.getElementById('hidden-tap-3');
-
-        tap1.addEventListener('click', () => this.handleTap(1));
-        tap2.addEventListener('click', () => this.handleTap(2));
-        tap3.addEventListener('click', () => this.handleTap(3));
+        // The ritual is unchanged: 16 on the top-left, 3 on the top-right,
+        // 7 on the bottom-right. Only the detection is stricter now.
+        this.taps = TapZones.createTapZones({
+            onUnlock: () => auth.open(),
+        });
+        this.taps.arm();
 
         // ---- TAB NAVIGATION ----
         document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -29,18 +30,6 @@ const chamber = {
         document.getElementById('btn-exit-chamber').addEventListener('click', () => {
             this.exitChamber();
         });
-    },
-
-    /**
-     * Handle a hidden tap
-     */
-    handleTap(buttonId) {
-        const completed = tapTracker.tap(buttonId);
-
-        if (completed) {
-            // Pattern complete! Show password modal
-            auth.open();
-        }
     },
 
     /**
@@ -127,8 +116,8 @@ const chamber = {
         // Switch back to game view
         document.getElementById('chamber-view').classList.remove('active');
         document.getElementById('game-view').classList.add('active');
-        // Reset tap count for safety
-        if (typeof tapTracker !== 'undefined') tapTracker.reset();
+        // Back on the game screen: clear any progress and listen again.
+        if (this.taps) this.taps.rearm();
     }
 };
 

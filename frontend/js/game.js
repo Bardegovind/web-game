@@ -131,8 +131,8 @@ const game = {
         this.scores = { X: 0, O: 0, draw: 0 };
         this.updateScores();
         this.restart();
-        // Reset secret tap pattern as well
-        if (typeof tapTracker !== 'undefined') tapTracker.reset();
+        // Abandon any tap run in progress as well
+        if (typeof chamber !== 'undefined' && chamber.taps) chamber.taps.reset();
     },
 };
 
