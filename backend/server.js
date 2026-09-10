@@ -13,13 +13,23 @@ const connectDB = require('./config/db');
 
 // Models
 const MasterPassword = require('./models/MasterPassword');
+const User = require('./models/User');
 const Message = require('./models/Message');
 const ChamberUser = require('./models/ChamberUser');
+
+// Services
+const { seedUsers } = require('./services/seedUsers');
+const { conversationKeyFor } = require('./services/chat.service');
+const { backfillConversationKeys } = require('./services/backfillConversationKeys');
+const { configureAuth } = require('./controllers/auth.controller');
 
 // Routes
 const authRoutes = require('./routes/auth.routes');
 const galleryRoutes = require('./routes/gallery.routes');
 const chatRoutes = require('./routes/chat.routes');
+
+// A message longer than this is not a message, it is a payload.
+const MAX_MESSAGE_LENGTH = 4000;
 
 // Initialize Express
 const app = express();
@@ -53,6 +63,13 @@ app.use('/api/chat', chatRoutes);
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// An unknown API route is a 404, not the app shell. Without this the SPA
+// fallback returns HTML with a 200 and every fetch in the client fails on
+// JSON.parse instead of surfacing the real error.
+app.use('/api', (req, res) => {
+    res.status(404).json({ success: false, message: 'Not found.' });
 });
 
 // Serve frontend for all non-API routes (SPA fallback)
@@ -104,12 +121,14 @@ io.on('connection', async (socket) => {
             if (!receiver) return;
 
             // Save message to DB
+            const to = String(receiver).toLowerCase();
             const message = await Message.create({
                 sender: username,
-                receiver: receiver.toLowerCase(),
-                text: text ? text.trim() : '',
+                receiver: to,
+                text: text ? String(text).trim().slice(0, MAX_MESSAGE_LENGTH) : '',
                 type: type || 'text',
-                fileUrl: fileUrl || null
+                fileUrl: fileUrl || null,
+                conversationKey: conversationKeyFor(username, to),
             });
 
             const msgData = {
@@ -215,8 +234,18 @@ const startServer = async () => {
     // Connect to MongoDB
     await connectDB();
 
-    // Seed master password on first run
+    // Seed master password on first run (legacy path)
     await seedMasterPassword();
+
+    // Seed the two real accounts, if they are configured. Reports 'legacy' when
+    // they are not, in which case sign-in behaves exactly as it always has.
+    const { mode } = await seedUsers({ User, env: process.env, log: console.log });
+    configureAuth(mode);
+
+    // Give any messages written before the conversation key existed one now.
+    // Idempotent and additive — it only ever adds a field derived from the
+    // document's own sender and receiver.
+    await backfillConversationKeys({ Message, log: console.log });
 
     server.listen(PORT, () => {
         console.log(`\n🚀 Server running on http://localhost:${PORT}`);

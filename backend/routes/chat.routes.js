@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getMessages, getUsers } = require('../controllers/chat.controller');
+const { getMessages, getUsers, getConversations, markRead } = require('../controllers/chat.controller');
 const authMiddleware = require('../middleware/auth.middleware');
 const upload = require('../utils/upload');
 
@@ -9,6 +9,12 @@ router.use(authMiddleware);
 
 // GET /api/chat/users — Get all chamber users
 router.get('/users', getUsers);
+
+// GET /api/chat/conversations — Sidebar and unread badge in one request
+router.get('/conversations', getConversations);
+
+// POST /api/chat/read/:otherUser — Record that this conversation has been seen
+router.post('/read/:otherUser', markRead);
 
 // GET /api/chat/messages/:otherUser — Get DM history
 router.get('/messages/:otherUser', getMessages);
