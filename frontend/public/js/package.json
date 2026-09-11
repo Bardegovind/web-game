@@ -1,0 +1,4 @@
+{
+  "//": "The game's scripts are classic browser <script> files, not modules. The frontend package.json declares type: module for the Vite build, which would otherwise make Node load these as ESM and break the tests that exercise the tap state machine.",
+  "type": "commonjs"
+}

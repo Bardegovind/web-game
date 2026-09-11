@@ -23,19 +23,30 @@ be redesigned.
 ## Running it
 
 ```bash
-cd backend
-npm install
-cp .env.example .env      # then fill it in
-npm start                 # http://localhost:5000
+cd frontend && npm install && npm run build   # builds the React chamber
+cd ../backend && npm install
+cp .env.example .env                          # then fill it in
+npm start                                     # http://localhost:5000
 ```
+
+The server serves `frontend/dist` when it exists and falls back to the source
+tree otherwise, so a fresh clone still runs the game before anyone has built.
+
+While working on the chamber, `cd frontend && npm run dev` gives hot reload and
+proxies the API and the websocket to port 5000.
 
 ## Tests
 
 ```bash
-npm test          # 63 unit tests — no database, no browser, fast
-npm run test:e2e  # 11 tests driving real Chrome, including the corner taps
+npm test          # 77 unit tests — no database, no browser, fast
+npm run test:e2e  # 18 tests driving real Chrome, including the corner taps
 npm run test:int  # 21 tests against a real MongoDB and real socket clients
+npm run test:all  # all three
 ```
+
+`test:e2e` runs against `frontend/dist`, so it exercises exactly what ships.
+One of them performs the whole journey — ritual, password, chamber, a live
+message from the other person — in a real browser.
 
 The integration tests need a throwaway database. They skip with a clear message
 if it is not running:
@@ -70,14 +81,29 @@ cannot lock anyone out.
 
 ## Layout
 
+The game stays vanilla; only what is behind the password is React. The chamber
+mounts into the game's page rather than living at a url of its own, so there is
+no address to stumble onto.
+
 ```
 frontend/
-  index.html
-  js/
-    tapSequence.js   pure state machine for the ritual — no DOM, unit tested
-    tapZones.js      binds pointerdown on the three corners
-    game.js          Tic-Tac-Toe
-    chat.js  gallery.js  auth.js  chamber.js  api.js
+  index.html            one page: the game, and a container the chamber fills
+  public/
+    js/
+      tapSequence.js    pure state machine for the ritual — no DOM, unit tested
+      tapZones.js       binds pointerdown on the three corners
+      game.js           Tic-Tac-Toe
+      auth.js           the password step
+      chamber.js        the whole seam between vanilla and React
+    css/style.css       the game's styling
+  chamber/              React + TypeScript + Tailwind
+    app/                shell and the entrance
+    features/chat/      conversations, messages, composer
+    features/memories/  photos
+    stores/             Zustand: auth, chat, presence
+    hooks/              TanStack Query: conversations, messages, memories
+    socket/             the realtime client and the protocol names
+    utils/time.ts       day labels and clock times
 
 backend/
   server.js          bootstrap only

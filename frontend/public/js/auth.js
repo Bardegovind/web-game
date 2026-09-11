@@ -80,7 +80,7 @@ const auth = {
                 localStorage.setItem('chamber_username', result.username);
 
                 this.close();
-                chamber.enter(result.username);
+                chamber.enter(result.username, result.token);
             } else {
                 this.errorEl.textContent = result.message || 'Incorrect password.';
             }

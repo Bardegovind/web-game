@@ -8,7 +8,9 @@
     "start": "node server.js",
     "test:watch": "node --test --watch \"tests/**/*.test.js\"",
     "test:e2e": "node --test \"tests/e2e/**/*.e2e.js\"",
-    "test:int": "node --test \"tests/integration/**/*.int.js\""
+    "test:int": "node --test \"tests/integration/**/*.int.js\"",
+    "build:frontend": "npm --prefix ../frontend ci && npm --prefix ../frontend run build",
+    "test:all": "npm test && npm run test:int && npm run test:e2e"
   },
   "keywords": [],
   "author": "",

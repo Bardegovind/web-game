@@ -3,7 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { createTapSequence } = require('../../frontend/js/tapSequence.js');
+const { createTapSequence } = require('../../frontend/public/js/tapSequence.js');
 
 // The ritual is frozen: zone 1 x16, then zone 2 x3, then zone 3 x7.
 const ZONE_1 = 1;

@@ -1,20 +1,30 @@
-# Node 22 LTS. Node 18 is past end of life; the local toolchain is on 24.
-# Slim rather than the full image: roughly a tenth of the size, and nothing in
-# this app needs the build toolchain at runtime.
+# ---- Chamber build ----
+# The React chamber is compiled here so the runtime image carries no build
+# toolchain. The game and the tap detector are plain files copied through.
+FROM node:22-slim AS chamber
+
+WORKDIR /app/frontend
+
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
+
+# ---- Backend dependencies ----
 FROM node:22-slim AS deps
 
 WORKDIR /app/backend
 
-# Copy the manifest and the lockfile together so `npm ci` can honour it.
-# The previous Dockerfile copied only package.json, which meant npm install
-# ignored the lockfile entirely and every build could resolve different
-# versions. It also installed into /app while the app ran from /app/backend,
-# which worked only through Node's parent-directory lookup.
+# Manifest and lockfile together, so `npm ci` can honour it. Installing in the
+# directory the app actually runs from, rather than relying on Node's
+# parent-directory lookup.
 COPY backend/package.json backend/package-lock.json ./
-
 RUN npm ci --omit=dev
 
 
+# ---- Runtime ----
 FROM node:22-slim AS runtime
 
 ENV NODE_ENV=production
@@ -23,9 +33,9 @@ WORKDIR /app/backend
 
 COPY --from=deps /app/backend/node_modules ./node_modules
 COPY backend ./
-COPY frontend ../frontend
+COPY --from=chamber /app/frontend/dist ../frontend/dist
 
-# Run as an unprivileged user. The base image ships `node` for exactly this.
+# The base image ships an unprivileged `node` user for exactly this.
 USER node
 
 EXPOSE 5000

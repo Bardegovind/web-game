@@ -22,7 +22,7 @@
     } else {
         root.TapZones = api;
     }
-})(typeof self !== 'undefined' ? self : this, function (TapSequence) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (TapSequence) {
     'use strict';
 
     const ZONE_SELECTOR = '[data-tap]';

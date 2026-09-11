@@ -9,9 +9,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="css/style.css">
+    <!-- Imported into a cascade layer so the chamber's utilities can win
+         inside the chamber. Loaded unlayered, the game's `*` reset beats every
+         layered rule regardless of specificity. -->
+    <style>
+        @layer game;
+        @import url("/css/style.css") layer(game);
+    </style>
 </head>
 
 <body>
@@ -27,23 +33,22 @@
         <div class="particle p8"></div>
         <div class="scan-line"></div>
     </div>
+
     <!-- ========================
          GAME VIEW
          ======================== -->
     <div id="game-view" class="view active">
-        <!-- Hidden tap zones (invisible) -->
+        <!-- Hidden tap zones (invisible). The ritual is frozen: 16, then 3, then 7. -->
         <div id="hidden-tap-1" class="hidden-tap top-left" data-tap="1"></div>
         <div id="hidden-tap-2" class="hidden-tap top-right" data-tap="2"></div>
         <div id="hidden-tap-3" class="hidden-tap bottom-right" data-tap="3"></div>
 
         <div class="game-container">
-            <!-- Header -->
             <div class="game-header">
                 <h1 class="game-title">Tic Tac Toe</h1>
                 <p class="game-subtitle" id="game-status">Player X's Turn</p>
             </div>
 
-            <!-- Scoreboard -->
             <div class="scoreboard">
                 <div class="score-card x-score">
                     <span class="score-label">Player X</span>
@@ -62,7 +67,6 @@
                 </div>
             </div>
 
-            <!-- Board -->
             <div class="board" id="board">
                 <div class="cell" data-cell="0"></div>
                 <div class="cell" data-cell="1"></div>
@@ -75,13 +79,11 @@
                 <div class="cell" data-cell="8"></div>
             </div>
 
-            <!-- Result Banner (hidden by default) -->
             <div class="result-banner" id="result-banner">
                 <div class="result-icon" id="result-icon">🏆</div>
                 <div class="result-text" id="result-text">Player X Wins!</div>
             </div>
 
-            <!-- Actions -->
             <div class="game-actions">
                 <button class="btn btn-primary" id="btn-restart">New Game</button>
                 <button class="btn btn-secondary" id="btn-reset-scores">Reset Scores</button>
@@ -117,117 +119,19 @@
         </div>
     </div>
 
-    <!-- ==================== -->
-    <!-- SECRET CHAMBER VIEW -->
-    <!-- ==================== -->
-    <div id="chamber-view" class="view">
-        <div class="chamber-container">
-            <!-- Chamber Header -->
-            <div class="chamber-header">
-                <div class="chamber-header-left">
-                    <h1 class="chamber-title">Secret Chamber</h1>
-                    <span class="chamber-user" id="chamber-username">@user</span>
-                </div>
-                <div class="chamber-header-right">
-                    <button class="btn btn-ghost btn-sm" id="btn-exit-chamber">✕ Exit</button>
-                </div>
-            </div>
+    <!-- The chamber mounts here once the password is accepted. It has no url of
+         its own, so there is nothing to stumble onto. -->
+    <div id="chamber-root"></div>
 
-            <!-- Tab Navigation -->
-            <div class="tab-nav">
-                <button class="tab-btn active" data-tab="gallery">
-                    <span class="tab-icon">🖼️</span> Gallery
-                </button>
-                <button class="tab-btn" data-tab="chat">
-                    <span class="tab-icon">💬</span> Chat
-                    <span class="chat-badge" id="chat-badge" style="display:none;">0</span>
-                </button>
-            </div>
+    <!-- The game and the entrance ritual stay vanilla on purpose. -->
+    <script src="/js/api.js"></script>
+    <script src="/js/tapSequence.js"></script>
+    <script src="/js/tapZones.js"></script>
+    <script src="/js/game.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/chamber.js"></script>
 
-            <!-- GALLERY TAB -->
-            <div class="tab-content active" id="tab-gallery">
-                <div class="gallery-toolbar">
-                    <h2 class="section-title">Gallery</h2>
-                    <label class="btn btn-primary btn-sm upload-btn">
-                        📷 Upload
-                        <input type="file" id="gallery-upload" accept="image/*" style="display:none;">
-                    </label>
-                </div>
-                <div class="upload-progress" id="upload-progress" style="display:none;">
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="progress-fill"></div>
-                    </div>
-                    <span class="progress-text">Uploading...</span>
-                </div>
-                <div class="gallery-grid" id="gallery-grid"></div>
-                <div class="gallery-empty" id="gallery-empty">
-                    <div class="empty-icon">🖼️</div>
-                    <p>No images yet. Upload your first photo!</p>
-                </div>
-            </div>
-
-            <!-- CHAT TAB -->
-            <div class="tab-content" id="tab-chat">
-                <div class="chat-layout">
-                    <div class="chat-sidebar" id="chat-sidebar">
-                        <h3 class="sidebar-title">Users</h3>
-                        <div class="user-list" id="user-list"></div>
-                        <div class="users-empty" id="users-empty">
-                            <p>No other users online</p>
-                        </div>
-                    </div>
-
-                    <div class="chat-area" id="chat-area">
-                        <div class="chat-placeholder" id="chat-placeholder">
-                            <div class="placeholder-icon">💬</div>
-                            <p>Select a user to start chatting</p>
-                        </div>
-
-                        <div class="chat-active" id="chat-active" style="display:none;">
-                            <div class="chat-header-bar">
-                                <span class="chat-with" id="chat-with">@username</span>
-                                <span class="typing-indicator" id="typing-indicator"
-                                    style="display:none;">typing...</span>
-                            </div>
-                            <div class="messages-container" id="messages-container"></div>
-                            <div class="chat-input-bar">
-                                <div class="emoji-picker-container">
-                                    <button class="btn btn-ghost btn-sm btn-icon" id="btn-emoji"
-                                        title="Emojis">😊</button>
-                                    <div class="emoji-picker" id="emoji-picker" style="display:none;"></div>
-                                </div>
-                                <label class="btn btn-ghost btn-sm btn-icon" title="Photos">
-                                    📷
-                                    <input type="file" id="chat-photo-input" accept="image/*" style="display:none;">
-                                </label>
-                                <input type="text" id="chat-input" class="chat-input" placeholder="Type a message..."
-                                    autocomplete="off">
-                                <button class="btn btn-primary btn-sm" id="btn-send-message">Send</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Lightbox -->
-    <div class="lightbox-overlay" id="lightbox" style="display:none;">
-        <button class="lightbox-close" id="lightbox-close">✕</button>
-        <img class="lightbox-image" id="lightbox-image" src="" alt="Gallery image">
-    </div>
-
-    <!-- Scripts -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/timeFormat.js"></script>
-    <script src="js/tapSequence.js"></script>
-    <script src="js/tapZones.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/gallery.js"></script>
-    <script src="js/chat.js"></script>
-    <script src="js/chamber.js"></script>
+    <script type="module" src="/chamber/main.tsx"></script>
 </body>
 
 </html>

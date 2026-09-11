@@ -17,7 +17,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright-core');
 
-const FRONTEND = path.join(__dirname, '..', '..', '..', 'frontend');
+// The built artefact, so these exercise exactly what ships.
+const FRONTEND = path.join(__dirname, '..', '..', '..', 'frontend', 'dist');
 const CHROME = '/usr/bin/google-chrome';
 
 const MIME = {
@@ -26,7 +27,7 @@ const MIME = {
     '.js': 'text/javascript; charset=utf-8',
 };
 
-/** Serves the frontend directory. The chamber entrance needs no backend to open. */
+/** Serves the built frontend. The chamber entrance needs no backend to open. */
 function startStaticServer() {
     const server = http.createServer((req, res) => {
         const rel = decodeURIComponent(req.url.split('?')[0]);

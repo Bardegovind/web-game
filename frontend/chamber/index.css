@@ -1,0 +1,131 @@
+/**
+ * Layer order, and why it is spelled out.
+ *
+ * The game's stylesheet opens with `* { margin: 0; padding: 0 }` and is loaded
+ * unlayered. An unlayered rule beats every layered one whatever the specificity,
+ * so Tailwind's `px-4` was generated correctly and then silently lost to it.
+ * index.html now imports the game's stylesheet into the `game` layer, declared
+ * first here so the chamber's utilities win inside the chamber.
+ *
+ * Preflight is deliberately left out: it lives in `base`, which would beat the
+ * game layer and restyle the game's buttons and headings. The chamber gets its
+ * own scoped reset below instead.
+ */
+@layer game, theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+/**
+ * The chamber is the same room as the game with the light switched on.
+ *
+ * The game is cold and electric — neon violet on near-black, a grid, particles.
+ * Repeating that here would make this feel like another screen of the arcade
+ * rather than somewhere you arrive. So the chamber is lit warm: amber is the
+ * accent inside, and the game's violet is kept only as a thread back to it.
+ */
+@theme {
+    --color-ink: #0b0810;
+    --color-velvet: #171022;
+    --color-velvet-lifted: #1f1630;
+    --color-lamp: #e8c39e;
+    --color-lamp-dim: #b9906a;
+    --color-rose: #d98ba8;
+    --color-violet: #7c3aed;
+    --color-chalk: #ede7f2;
+    --color-dust: #8a7f98;
+    --color-hairline: rgba(237, 231, 242, 0.08);
+
+    --font-display: "Fraunces", Georgia, serif;
+    --font-ui: "Outfit", system-ui, sans-serif;
+
+    --radius-bubble: 18px;
+}
+
+@layer base {
+    /* Only what the chamber needs, scoped to the chamber, since preflight is
+       not loaded globally. */
+    .chamber-root button,
+    .chamber-root input,
+    .chamber-root textarea {
+        font: inherit;
+        color: inherit;
+        background: none;
+        border: 0;
+        cursor: pointer;
+    }
+
+    .chamber-root input,
+    .chamber-root textarea {
+        cursor: text;
+    }
+
+    .chamber-root img {
+        display: block;
+        max-width: 100%;
+    }
+
+    .chamber-root h1,
+    .chamber-root h2,
+    .chamber-root h3,
+    .chamber-root p,
+    .chamber-root ul,
+    .chamber-root li {
+        margin: 0;
+        padding: 0;
+        font-size: inherit;
+        font-weight: inherit;
+        list-style: none;
+    }
+
+    .chamber-root {
+        font-family: var(--font-ui);
+        color: var(--color-chalk);
+        background: var(--color-ink);
+        /* A single warm source, top-left, like a lamp in the corner. */
+        background-image: radial-gradient(
+            120% 80% at 12% 0%,
+            rgba(232, 195, 158, 0.08) 0%,
+            rgba(124, 58, 237, 0.05) 38%,
+            transparent 72%
+        );
+        -webkit-font-smoothing: antialiased;
+    }
+
+    .chamber-root ::selection {
+        background: var(--color-lamp);
+        color: var(--color-ink);
+    }
+
+    /* Keyboard users must always be able to see where they are. */
+    .chamber-root :focus-visible {
+        outline: 2px solid var(--color-lamp);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+}
+
+/* Nothing here insists on moving. */
+@media (prefers-reduced-motion: reduce) {
+    .chamber-root *,
+    .chamber-root *::before,
+    .chamber-root *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+.chamber-scroll {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(237, 231, 242, 0.14) transparent;
+}
+
+.chamber-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.chamber-scroll::-webkit-scrollbar-thumb {
+    background: rgba(237, 231, 242, 0.14);
+    border-radius: 999px;
+}

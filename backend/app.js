@@ -8,7 +8,16 @@ const authRoutes = require('./routes/auth.routes');
 const galleryRoutes = require('./routes/gallery.routes');
 const chatRoutes = require('./routes/chat.routes');
 
-const FRONTEND_DIR = path.join(__dirname, '..', 'frontend');
+const fs = require('fs');
+
+const BUILT = path.join(__dirname, '..', 'frontend', 'dist');
+const SOURCE = path.join(__dirname, '..', 'frontend');
+
+/**
+ * Serve the built chamber when it exists, and fall back to the source tree
+ * otherwise so a fresh clone still runs the game before anyone has built.
+ */
+const FRONTEND_DIR = fs.existsSync(path.join(BUILT, 'index.html')) ? BUILT : SOURCE;
 
 /**
  * The HTTP layer. Routing and middleware only — no business logic, no
