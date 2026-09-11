@@ -60,3 +60,53 @@ export interface ReadReceipt {
     peer?: string;
     readAt: string;
 }
+
+export interface Letter {
+    _id: string;
+    prompt: string;
+    writtenBy: string;
+    createdAt: string;
+    isOpened: boolean;
+    openedAt: string | null;
+    /** Present only once it has been opened. */
+    body?: string;
+}
+
+export interface StoryEntry {
+    _id: string;
+    happenedAt: string;
+    title: string;
+    note: string;
+    emoji: string;
+    place: string;
+    imageUrl: string | null;
+    addedBy: string;
+}
+
+export interface BucketItem {
+    _id: string;
+    text: string;
+    done: boolean;
+    doneAt: string | null;
+    doneBy: string | null;
+    addedBy: string;
+}
+
+export interface QuestionAnswer {
+    username: string;
+    text: string;
+    answeredAt: string;
+}
+
+export interface DailyQuestion {
+    day: string;
+    text: string;
+    answers: QuestionAnswer[];
+}
+
+export interface Today {
+    unreadMessages: number;
+    unopenedLetters: number;
+    question: { text: string; answered: boolean };
+    memoryOfTheDay: { _id: string; url: string; caption: string; createdAt: string } | null;
+}

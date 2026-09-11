@@ -96,7 +96,7 @@ export function MemoryGrid({ onOpenImage }: { onOpenImage: (url: string) => void
     const memories = data ?? [];
 
     return (
-        <div className="chamber-scroll min-h-0 flex-1 overflow-y-auto px-3 pb-24">
+        <div className="chamber-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-3 pb-24">
             {memories.length === 0 ? (
                 <div className="px-6 py-16 text-center">
                     <p className="font-display text-lg text-chalk">Nothing kept here yet</p>

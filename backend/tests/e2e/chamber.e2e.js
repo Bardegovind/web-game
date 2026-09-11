@@ -92,6 +92,8 @@ async function signIn(page, username, password) {
     await page.click('#btn-submit-password');
 }
 
+let peerToken = null;
+
 /** A second person, connected over a real socket, to send from the other side. */
 async function otherPerson(username, password) {
     const res = await fetch(`${BASE}/api/auth/verify-password`, {
@@ -100,6 +102,7 @@ async function otherPerson(username, password) {
         body: JSON.stringify({ username, password }),
     });
     const { token } = await res.json();
+    peerToken = token;
 
     const socket = connect(BASE, { auth: { token }, transports: ['websocket'], forceNew: true });
     await new Promise((resolve, reject) => {
@@ -161,6 +164,8 @@ test('the chamber, end to end', async (t) => {
     });
 
     await t.test('the other person appears in the conversation list', async () => {
+        // The chamber opens on `today` now, so the conversations live a tab away.
+        await page.locator('nav button').filter({ hasText: 'messages' }).first().click();
         await page.waitForSelector(`text=${HIM}`, { timeout: 6000 });
     });
 
@@ -220,7 +225,87 @@ test('the chamber, end to end', async (t) => {
         assert.ok(body.includes('Today'), 'today\'s messages should sit under a Today heading');
     });
 
+    await t.test('today opens with what is waiting', async () => {
+        await page.locator('nav button').filter({ hasText: 'today' }).first().click();
+        await page.waitForSelector('text=Today\'s question', { timeout: 6000 });
+
+        const body = await page.locator('#chamber-root').innerText();
+        assert.ok(body.includes('waiting for you') || body.includes('caught up'),
+            'it should say whether anything is waiting');
+    });
+
+    await t.test('she can answer the question and see it recorded', async () => {
+        await page.fill('input[placeholder="Your answer"]', 'somewhere with no signal');
+        await page.locator('button').filter({ hasText: 'Answer' }).first().click();
+
+        await page.waitForSelector('text=You said', { timeout: 6000 });
+        const body = await page.locator('#chamber-root').innerText();
+        assert.ok(body.includes('somewhere with no signal'), 'her answer should be shown back to her');
+    });
+
+    /** The whole idea depends on not being able to peek. */
+    await t.test('a letter waiting for her does not give itself away', async () => {
+        await fetch(`${BASE}/api/chamber/letters`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${peerToken}` },
+            body: JSON.stringify({
+                prompt: 'Open when you miss me',
+                body: 'THE-SECRET-CONTENTS',
+            }),
+        });
+
+        await page.locator('nav button').filter({ hasText: 'letters' }).first().click();
+        await page.waitForSelector('text=Open when you miss me', { timeout: 6000 });
+
+        const body = await page.locator('#chamber-root').innerText();
+        assert.ok(body.includes('Not opened yet'));
+        assert.ok(!body.includes('THE-SECRET-CONTENTS'), 'an unopened letter must keep its contents');
+    });
+
+    await t.test('opening the letter reveals it', async () => {
+        await page.locator('button').filter({ hasText: 'Open when you miss me' }).first().click();
+        await page.waitForSelector('text=THE-SECRET-CONTENTS', { timeout: 6000 });
+
+        await page.keyboard.press('Escape').catch(() => {});
+        await page.locator('[aria-label="Close"]').first().click();
+    });
+
+    await t.test('the shared list can be added to and ticked off', async () => {
+        await page.locator('nav button').filter({ hasText: 'list' }).first().click();
+        await page.waitForSelector('input[placeholder="Something we should do"]', { timeout: 6000 });
+
+        await page.fill('input[placeholder="Something we should do"]', 'Watch the sunrise together');
+        await page.locator('[aria-label="Add to the list"]').click();
+        await page.waitForSelector('text=Watch the sunrise together', { timeout: 6000 });
+
+        await page.locator('button').filter({ hasText: 'Watch the sunrise together' }).first().click();
+        await page.waitForSelector('text=1 of 1', { timeout: 6000 });
+    });
+
+    await t.test('the story reads forwards', async () => {
+        for (const entry of [
+            { title: 'The beginning', happenedAt: '2025-03-29', emoji: '\u2661' },
+            { title: 'That day', happenedAt: '2025-12-25', note: 'the cake' },
+        ]) {
+            await fetch(`${BASE}/api/chamber/story`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${peerToken}` },
+                body: JSON.stringify(entry),
+            });
+        }
+
+        await page.locator('nav button').filter({ hasText: 'story' }).first().click();
+        await page.waitForSelector('text=The beginning', { timeout: 6000 });
+
+        const body = await page.locator('#chamber-root').innerText();
+        assert.ok(
+            body.indexOf('The beginning') < body.indexOf('That day'),
+            'oldest first, so it reads as a story rather than a feed'
+        );
+    });
+
     await t.test('leaving puts the game back and re-arms the corners', async () => {
+        await page.locator('nav button').filter({ hasText: 'messages' }).first().click();
         await page.click('[aria-label="Leave"]');
         await page.waitForTimeout(400);
 

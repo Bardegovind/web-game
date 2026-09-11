@@ -9,18 +9,24 @@ import { ConversationList } from '../features/chat/ConversationList';
 import { Conversation } from '../features/chat/Conversation';
 import { MemoryGrid } from '../features/memories/MemoryGrid';
 import { Lightbox } from '../features/memories/Lightbox';
+import { Today } from '../features/today/Today';
+import { Letters } from '../features/letters/Letters';
+import { Story } from '../features/story/Story';
+import { Bucket } from '../features/bucket/Bucket';
 
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
 import { useConversations, conversationsKey } from '../hooks/useConversations';
 import { messagesKey } from '../hooks/useMessages';
+import { useToday, todayKey } from '../hooks/useChamber';
 import { connectSocket, disconnectSocket, setSocketCallbacks } from '../socket/socketClient';
 
-type Tab = 'messages' | 'moments';
+const TABS = ['today', 'messages', 'moments', 'letters', 'story', 'list'] as const;
+type Tab = (typeof TABS)[number];
 
 export function App() {
     const { username, token, isInside, leave } = useAuthStore();
-    const [tab, setTab] = useState<Tab>('messages');
+    const [tab, setTab] = useState<Tab>('today');
     const [showEntrance, setShowEntrance] = useState(true);
     const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -30,6 +36,7 @@ export function App() {
 
     const queryClient = useQueryClient();
     const { data: conversations, isLoading, isError, refetch } = useConversations();
+    const { data: today } = useToday();
 
     useEffect(() => {
         if (!isInside || !token) return;
@@ -38,12 +45,14 @@ export function App() {
             onMessage: (message) => {
                 addMessage(message.sender, message);
                 queryClient.invalidateQueries({ queryKey: conversationsKey });
+                queryClient.invalidateQueries({ queryKey: todayKey });
             },
             onRead: () => queryClient.invalidateQueries({ queryKey: conversationsKey }),
             onResync: () => {
                 // Whatever arrived while the socket was away is fetched rather
                 // than guessed at.
                 queryClient.invalidateQueries({ queryKey: conversationsKey });
+                queryClient.invalidateQueries({ queryKey: todayKey });
                 const peer = useChatStore.getState().activePeer;
                 if (peer) queryClient.invalidateQueries({ queryKey: messagesKey(peer) });
             },
@@ -57,6 +66,13 @@ export function App() {
 
     const list = conversations ?? [];
     const active = list.find((c) => c.username === activePeer) ?? null;
+
+    /** A quiet count beside a word, only when there is something to say. */
+    const badgeFor = (name: Tab): number => {
+        if (name === 'messages') return today?.unreadMessages ?? 0;
+        if (name === 'letters') return today?.unopenedLetters ?? 0;
+        return 0;
+    };
 
     return (
         <div className="chamber-root fixed inset-0 z-50 flex flex-col">
@@ -87,31 +103,44 @@ export function App() {
                 </button>
             </header>
 
-            <nav className="flex gap-6 border-b border-hairline px-4">
-                {(['messages', 'moments'] as const).map((name) => (
-                    <button
-                        key={name}
-                        type="button"
-                        onClick={() => setTab(name)}
-                        className={`relative pb-2.5 font-display text-[0.95rem] transition-colors ${
-                            tab === name ? 'text-chalk' : 'text-dust hover:text-chalk/80'
-                        }`}
-                    >
-                        {name}
-                        {tab === name && (
-                            <motion.span
-                                layoutId="tab-underline"
-                                className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-lamp"
-                            />
-                        )}
-                    </button>
-                ))}
+            {/* Scrolls sideways on a narrow screen rather than wrapping into a
+                second row or shrinking into icons. */}
+            <nav className="chamber-scroll flex gap-5 overflow-x-auto border-b border-hairline px-4">
+                {TABS.map((name) => {
+                    const badge = badgeFor(name);
+
+                    return (
+                        <button
+                            key={name}
+                            type="button"
+                            onClick={() => setTab(name)}
+                            className={`relative shrink-0 pb-2.5 font-display text-[0.95rem] transition-colors ${
+                                tab === name ? 'text-chalk' : 'text-dust hover:text-chalk/80'
+                            }`}
+                        >
+                            {name}
+                            {badge > 0 && (
+                                <span className="ml-1.5 align-super text-[0.6rem] text-lamp">{badge}</span>
+                            )}
+                            {tab === name && (
+                                <motion.span
+                                    layoutId="tab-underline"
+                                    className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-lamp"
+                                />
+                            )}
+                        </button>
+                    );
+                })}
             </nav>
 
-            <main className="min-h-0 flex-1">
-                {tab === 'moments' ? (
-                    <MemoryGrid onOpenImage={setLightbox} />
-                ) : (
+            <main className="flex min-h-0 flex-1 flex-col">
+                {tab === 'today' && <Today onOpenImage={setLightbox} />}
+                {tab === 'moments' && <MemoryGrid onOpenImage={setLightbox} />}
+                {tab === 'letters' && <Letters />}
+                {tab === 'story' && <Story />}
+                {tab === 'list' && <Bucket />}
+
+                {tab === 'messages' && (
                     <div className="flex h-full min-h-0">
                         {/* Mobile shows one at a time; a squeezed three-pane
                             layout on a phone helps no one. */}
