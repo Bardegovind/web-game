@@ -22,6 +22,10 @@ const EVENTS = {
     TYPING_START: 'typing:start',
     TYPING_STOP: 'typing:stop',
 
+    // Reactions
+    REACTION_TOGGLE: 'reaction:toggle',
+    REACTION_UPDATED: 'reaction:updated',
+
     // Presence
     PRESENCE_UPDATE: 'presence:update',
 

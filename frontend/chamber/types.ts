@@ -10,6 +10,19 @@ export interface User {
     displayName?: string;
 }
 
+export interface Reaction {
+    username: string;
+    emoji: string;
+}
+
+/** A snapshot of the quoted message, carried with the reply. */
+export interface ReplySnapshot {
+    messageId: string;
+    sender: string;
+    text: string;
+    type: 'text' | 'image';
+}
+
 export interface Message {
     _id: string;
     sender: string;
@@ -18,6 +31,8 @@ export interface Message {
     type: 'text' | 'image';
     fileUrl: string | null;
     createdAt: string;
+    reactions?: Reaction[];
+    replyTo?: ReplySnapshot | null;
     /** Present only on a message this client sent, so it can be reconciled. */
     clientId?: string | null;
     /** True while an optimistic message is still awaiting its acknowledgement. */

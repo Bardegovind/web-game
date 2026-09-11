@@ -1,6 +1,7 @@
 'use strict';
 
 const { EVENTS, roomFor } = require('./events');
+const { applyReaction } = require('../services/reactions');
 
 const MAX_MESSAGE_LENGTH = 4000;
 
@@ -30,6 +31,17 @@ function registerChatHandlers(deps) {
 
             if (type === 'text' && !text) return;
 
+            // A snapshot, so the quoted line still reads correctly later even
+            // if the original is edited or the list is paged away.
+            const replyTo = payload.replyTo && payload.replyTo.messageId
+                ? {
+                    messageId: String(payload.replyTo.messageId),
+                    sender: String(payload.replyTo.sender || ''),
+                    text: String(payload.replyTo.text || '').slice(0, 200),
+                    type: payload.replyTo.type === 'image' ? 'image' : 'text',
+                }
+                : null;
+
             const message = await Message.create({
                 sender: me,
                 receiver: to,
@@ -37,6 +49,8 @@ function registerChatHandlers(deps) {
                 type,
                 fileUrl: payload.fileUrl || null,
                 conversationKey: conversationKeyFor(me, to),
+                replyTo,
+                reactions: [],
             });
 
             const wire = {
@@ -47,6 +61,8 @@ function registerChatHandlers(deps) {
                 type: message.type,
                 fileUrl: message.fileUrl,
                 createdAt: message.createdAt,
+                replyTo: message.replyTo || null,
+                reactions: [],
                 // Echoed back so an optimistically rendered message can be
                 // reconciled instead of appearing twice.
                 clientId: payload.clientId || null,
@@ -63,6 +79,37 @@ function registerChatHandlers(deps) {
             console.error('Message send error:', error);
             socket.emit(EVENTS.MESSAGE_ERROR, { message: 'Failed to send message.' });
             if (typeof ack === 'function') ack({ ok: false });
+        }
+    });
+
+    socket.on(EVENTS.REACTION_TOGGLE, async (data, ack) => {
+        try {
+            const messageId = data && data.messageId;
+            const emoji = data && data.emoji;
+            if (!messageId || !emoji) return;
+
+            const message = await Message.findById(messageId);
+            if (!message) return;
+
+            // Only the two people in the conversation may react to it.
+            if (message.sender !== me && message.receiver !== me) return;
+
+            message.reactions = applyReaction(message.reactions, { username: me, emoji });
+            await message.save();
+
+            const wire = {
+                messageId: String(message._id),
+                reactions: message.reactions.map((r) => ({ username: r.username, emoji: r.emoji })),
+            };
+
+            io.to(roomFor(message.sender)).emit(EVENTS.REACTION_UPDATED, wire);
+            io.to(roomFor(message.receiver)).emit(EVENTS.REACTION_UPDATED, wire);
+
+            if (typeof ack === 'function') ack({ ok: true, reactions: wire.reactions });
+        } catch (error) {
+            // An emoji outside the offered set lands here; nothing to do but
+            // leave the message as it was.
+            if (typeof ack === 'function') ack({ ok: false, message: error.message });
         }
     });
 

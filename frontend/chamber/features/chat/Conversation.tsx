@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronLeft, X } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 
 import type { Message } from '../../types';
@@ -37,8 +37,10 @@ export function Conversation({
 
     const { data, isLoading, isError, refetch } = useMessages(peer);
     const stored = useChatStore((s) => s.messagesByPeer[peer]);
+    const peerReadAt = useChatStore((s) => s.peerReadAt[peer]);
     const { setMessages, addMessage, markFailed } = useChatStore();
     const bottom = useRef<HTMLDivElement>(null);
+    const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
     // Server history seeds the store; live messages are appended to it.
     useEffect(() => {
@@ -75,6 +77,14 @@ export function Conversation({
 
     function send(text: string) {
         const clientId = newClientId();
+        const quoted = replyingTo
+            ? {
+                messageId: replyingTo._id,
+                sender: replyingTo.sender,
+                text: replyingTo.text,
+                type: replyingTo.type,
+            }
+            : null;
 
         // On screen immediately; the acknowledgement reconciles it rather than
         // adding a second copy.
@@ -88,9 +98,12 @@ export function Conversation({
             createdAt: new Date().toISOString(),
             clientId,
             pending: true,
+            replyTo: quoted,
+            reactions: [],
         });
 
-        sendMessage({ receiver: peer, text, type: 'text', clientId });
+        sendMessage({ receiver: peer, text, type: 'text', clientId, replyTo: quoted });
+        setReplyingTo(null);
         window.setTimeout(() => {
             const current = useChatStore.getState().messagesByPeer[peer] ?? [];
             if (current.some((m) => m.clientId === clientId && m.pending)) markFailed(peer, clientId);
@@ -156,7 +169,12 @@ export function Conversation({
                                     key={row.message._id}
                                     message={row.message}
                                     isMine={row.message.sender === me}
+                                    isRead={
+                                        Boolean(peerReadAt) &&
+                                        new Date(row.message.createdAt) <= new Date(peerReadAt as string)
+                                    }
                                     onOpenImage={onOpenImage}
+                                    onReply={setReplyingTo}
                                 />
                             )
                         )}
@@ -166,6 +184,25 @@ export function Conversation({
                 {isTyping && <TypingIndicator name={peer} />}
                 <div ref={bottom} />
             </div>
+
+            {replyingTo && (
+                <div className="flex items-start gap-2 border-t border-hairline bg-velvet/60 px-4 py-2">
+                    <div className="min-w-0 flex-1 border-l-2 border-lamp-dim pl-2">
+                        <p className="text-[0.7rem] text-lamp">Replying to {replyingTo.sender}</p>
+                        <p className="truncate text-xs text-dust">
+                            {replyingTo.type === 'image' ? 'Photo' : replyingTo.text}
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        aria-label="Cancel reply"
+                        onClick={() => setReplyingTo(null)}
+                        className="rounded-full p-1 text-dust transition-colors hover:text-chalk"
+                    >
+                        <X size={14} />
+                    </button>
+                </div>
+            )}
 
             <Composer
                 onSend={send}

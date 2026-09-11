@@ -1,6 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { EVENTS } from './events';
-import type { Message, PresencePayload, ReadReceipt, TypingPayload } from '../types';
+import type { Message, PresencePayload, Reaction, ReadReceipt, TypingPayload } from '../types';
 import { usePresenceStore } from '../stores/presenceStore';
 import { useChatStore } from '../stores/chatStore';
 
@@ -48,7 +48,17 @@ export function connectSocket(token: string): Socket {
         useChatStore.getState().reconcile(message.receiver, message);
     });
 
-    socket.on(EVENTS.MESSAGE_READ_ACK, (receipt: ReadReceipt) => callbacks.onRead?.(receipt));
+    socket.on(EVENTS.MESSAGE_READ_ACK, (receipt: ReadReceipt) => {
+        // When the other person reads, their tick moves forward.
+        if (receipt.reader && !receipt.peer) {
+            useChatStore.getState().setPeerReadAt(receipt.reader, receipt.readAt);
+        }
+        callbacks.onRead?.(receipt);
+    });
+
+    socket.on(EVENTS.REACTION_UPDATED, (payload: { messageId: string; reactions: Reaction[] }) => {
+        useChatStore.getState().setReactions(payload.messageId, payload.reactions);
+    });
 
     socket.on(EVENTS.TYPING_START, (payload: TypingPayload) => {
         usePresenceStore.getState().setTyping(payload.sender, true);
@@ -73,8 +83,13 @@ export function sendMessage(payload: {
     type: 'text' | 'image';
     fileUrl?: string;
     clientId: string;
+    replyTo?: { messageId: string; sender: string; text: string; type: 'text' | 'image' } | null;
 }): void {
     socket?.emit(EVENTS.MESSAGE_SEND, payload);
+}
+
+export function toggleReaction(messageId: string, emoji: string): void {
+    socket?.emit(EVENTS.REACTION_TOGGLE, { messageId, emoji });
 }
 
 export function sendRead(peer: string): void {

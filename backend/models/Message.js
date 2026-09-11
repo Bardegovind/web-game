@@ -1,5 +1,17 @@
 const mongoose = require('mongoose');
 
+/**
+ * What a reply quotes. A sub-schema rather than an inline object, because
+ * `type` is a reserved key in a Mongoose path definition and a field actually
+ * named `type` cannot be declared inline alongside it.
+ */
+const replySnapshotSchema = new mongoose.Schema({
+    messageId: String,
+    sender: String,
+    text: String,
+    type: { type: String, enum: ['text', 'image'], default: 'text' },
+}, { _id: false });
+
 const messageSchema = new mongoose.Schema({
     sender: {
         type: String,
@@ -21,6 +33,17 @@ const messageSchema = new mongoose.Schema({
         default: 'text',
     },
     fileUrl: String,
+    reactions: [{
+        username: { type: String, required: true, lowercase: true, trim: true },
+        emoji: { type: String, required: true },
+        _id: false,
+    }],
+    /**
+     * A snapshot of what is being replied to, rather than a live reference.
+     * The quoted line should still read correctly later, and it saves a lookup
+     * on every message rendered.
+     */
+    replyTo: { type: replySnapshotSchema, default: null },
     /**
      * The two participants, lowercased and sorted. Lets one indexed equality
      * match replace an $or across both directions, which an index can only

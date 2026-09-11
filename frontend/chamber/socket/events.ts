@@ -17,6 +17,9 @@ export const EVENTS = {
     TYPING_START: 'typing:start',
     TYPING_STOP: 'typing:stop',
 
+    REACTION_TOGGLE: 'reaction:toggle',
+    REACTION_UPDATED: 'reaction:updated',
+
     PRESENCE_UPDATE: 'presence:update',
 } as const;
 

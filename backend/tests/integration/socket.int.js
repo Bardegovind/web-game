@@ -274,6 +274,67 @@ test('socket integration', async (t) => {
         assert.equal(him.isOnline, true, 'his other tab is still open, so he is still here');
     });
 
+    await t.test('a reaction reaches both of them', async () => {
+        const arrival = nextEvent(himSocket, 'message:new', 5000, (m) => m.text === 'react to this');
+        herSocket.emit('message:send', { receiver: HIM, text: 'react to this', type: 'text' });
+        const message = await arrival;
+
+        const onHers = nextEvent(herSocket, 'reaction:updated', 5000, (r) => r.messageId === message._id);
+        const onHis = nextEvent(himSocket, 'reaction:updated', 5000, (r) => r.messageId === message._id);
+
+        himSocket.emit('reaction:toggle', { messageId: message._id, emoji: '\u2764\ufe0f' });
+
+        const [hers, his] = await Promise.all([onHers, onHis]);
+        assert.equal(hers.reactions.length, 1, 'she should see he reacted');
+        assert.equal(hers.reactions[0].username, HIM);
+        assert.equal(his.reactions.length, 1, 'and so should he');
+    });
+
+    await t.test('reacting the same way again takes it back', async () => {
+        const arrival = nextEvent(himSocket, 'message:new', 5000, (m) => m.text === 'take it back');
+        herSocket.emit('message:send', { receiver: HIM, text: 'take it back', type: 'text' });
+        const message = await arrival;
+
+        const added = nextEvent(himSocket, 'reaction:updated', 5000,
+            (r) => r.messageId === message._id && r.reactions.length === 1);
+        himSocket.emit('reaction:toggle', { messageId: message._id, emoji: '\ud83d\ude02' });
+        await added;
+
+        const removed = nextEvent(himSocket, 'reaction:updated', 5000,
+            (r) => r.messageId === message._id && r.reactions.length === 0);
+        himSocket.emit('reaction:toggle', { messageId: message._id, emoji: '\ud83d\ude02' });
+
+        assert.deepEqual((await removed).reactions, []);
+    });
+
+    await t.test('a reaction is persisted, not merely broadcast', async () => {
+        await mongoose.connect(MONGO_URI);
+        const withReactions = await mongoose.connection.collection('messages')
+            .countDocuments({ 'reactions.0': { $exists: true } });
+        await mongoose.disconnect();
+
+        assert.ok(withReactions >= 1, 'it must still be there after a reload');
+    });
+
+    await t.test('a reply carries what it is replying to', async () => {
+        const first = nextEvent(himSocket, 'message:new', 5000, (m) => m.text === 'remember that day?');
+        herSocket.emit('message:send', { receiver: HIM, text: 'remember that day?', type: 'text' });
+        const original = await first;
+
+        himSocket.emit('message:send', {
+            receiver: HER,
+            text: 'YESSS',
+            type: 'text',
+            replyTo: { messageId: original._id, sender: HER, text: 'remember that day?', type: 'text' },
+        });
+
+        // She sees his reply arrive with the quote attached.
+        const arrived = await nextEvent(herSocket, 'message:new', 5000, (m) => m.text === 'YESSS');
+        assert.ok(arrived.replyTo, 'the quoted message should travel with the reply');
+        assert.equal(arrived.replyTo.text, 'remember that day?');
+        assert.equal(arrived.replyTo.sender, HER);
+    });
+
     await t.test('presence updates are broadcast when someone leaves', async () => {
         const extraToken = await login(HIM, HIS_PASSWORD);
         const temporary = await openSocket(extraToken);

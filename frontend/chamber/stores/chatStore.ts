@@ -1,9 +1,13 @@
 import { create } from 'zustand';
-import type { Message } from '../types';
+import type { Message, Reaction } from '../types';
 
 interface ChatState {
     activePeer: string | null;
     messagesByPeer: Record<string, Message[]>;
+    /** How far each peer has read, so sent messages can show a tick. */
+    peerReadAt: Record<string, string>;
+    setPeerReadAt: (peer: string, readAt: string) => void;
+    setReactions: (messageId: string, reactions: Reaction[]) => void;
     setActivePeer: (peer: string | null) => void;
     setMessages: (peer: string, messages: Message[]) => void;
     addMessage: (peer: string, message: Message) => void;
@@ -25,6 +29,20 @@ function insert(existing: Message[], message: Message): Message[] {
 export const useChatStore = create<ChatState>((set) => ({
     activePeer: null,
     messagesByPeer: {},
+    peerReadAt: {},
+
+    setPeerReadAt: (peer, readAt) =>
+        set((state) => ({ peerReadAt: { ...state.peerReadAt, [peer]: readAt } })),
+
+    /** A reaction can land on a message in any open conversation. */
+    setReactions: (messageId, reactions) =>
+        set((state) => {
+            const next: Record<string, Message[]> = {};
+            for (const [peer, messages] of Object.entries(state.messagesByPeer)) {
+                next[peer] = messages.map((m) => (m._id === messageId ? { ...m, reactions } : m));
+            }
+            return { messagesByPeer: next };
+        }),
 
     setActivePeer: (activePeer) => set({ activePeer }),
 

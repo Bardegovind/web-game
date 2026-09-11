@@ -225,6 +225,34 @@ test('the chamber, end to end', async (t) => {
         assert.ok(body.includes('Today'), 'today\'s messages should sit under a Today heading');
     });
 
+    await t.test('she can react to a message and it sticks', async () => {
+        const bubble = page.locator('.group').filter({ hasText: 'i made something for you' }).first();
+        await bubble.hover();
+        await bubble.locator('[aria-label="React"]').click();
+
+        await page.locator('button').filter({ hasText: '\u2764\ufe0f' }).last().click();
+        await page.waitForTimeout(600);
+
+        const body = await page.locator('#chamber-root').innerText();
+        assert.ok(body.includes('\u2764\ufe0f'), 'the reaction should show on the message');
+    });
+
+    await t.test('replying quotes what it is replying to', async () => {
+        const bubble = page.locator('.group').filter({ hasText: 'i made something for you' }).first();
+        await bubble.hover();
+        await bubble.locator('[aria-label="Reply"]').click();
+
+        await page.waitForSelector('text=Replying to', { timeout: 4000 });
+
+        await page.fill('textarea', 'YESSS');
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(900);
+
+        const body = await page.locator('#chamber-root').innerText();
+        assert.ok(body.includes('YESSS'), 'the reply should send');
+        assert.ok(!body.includes('Replying to'), 'and the quote bar should clear');
+    });
+
     await t.test('today opens with what is waiting', async () => {
         await page.locator('nav button').filter({ hasText: 'today' }).first().click();
         await page.waitForSelector('text=Today\'s question', { timeout: 6000 });
