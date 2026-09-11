@@ -3,6 +3,7 @@
 require('dotenv').config();
 
 const http = require('http');
+const mongoose = require('mongoose');
 
 const connectDB = require('./config/db');
 const { attachRedisAdapter } = require('./config/redisAdapter');
@@ -57,6 +58,38 @@ const startServer = async () => {
         console.log(`📡 Socket.IO ready for connections`);
         console.log(`🎮 Game: http://localhost:${PORT}\n`);
     });
+
+    /**
+     * Shut down without dropping anyone mid-sentence.
+     *
+     * A container is stopped with SIGTERM. Closing the sockets and the HTTP
+     * server first lets in-flight writes finish, so a message being saved as
+     * the process ends is not lost. The timeout is the backstop for a
+     * connection that refuses to close.
+     */
+    const shutdown = async (signal) => {
+        console.log(`\n${signal} received, closing.`);
+
+        const forced = setTimeout(() => {
+            console.error('Shutdown took too long; exiting anyway.');
+            process.exit(1);
+        }, 10000);
+        forced.unref();
+
+        try {
+            io.close();
+            await new Promise((resolve) => server.close(resolve));
+            await mongoose.connection.close();
+            console.log('Closed cleanly.');
+            process.exit(0);
+        } catch (error) {
+            console.error('Error during shutdown:', error);
+            process.exit(1);
+        }
+    };
+
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 };
 
 startServer();

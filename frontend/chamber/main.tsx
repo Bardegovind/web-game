@@ -30,6 +30,21 @@ interface EnterDetail {
     token: string;
 }
 
+/**
+ * Installed, the app is the game — same name, same icon. An entry called "Our
+ * Place" with a heart on it would hand the secret to anyone glancing at her
+ * home screen, which is the one thing this is built to avoid.
+ */
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+            // Working offline is a convenience, not a requirement. If it cannot
+            // register — an insecure origin, a private window — everything else
+            // carries on unchanged.
+        });
+    });
+}
+
 const container = document.getElementById('chamber-root');
 
 if (container) {

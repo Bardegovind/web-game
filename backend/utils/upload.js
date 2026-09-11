@@ -1,20 +1,18 @@
-const multer = require('multer');
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
-const cloudinary = require('../config/cloudinary');
+'use strict';
 
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'secret-chamber-gallery',
-        allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov'],
-        transformation: [{ width: 1200, height: 1200, crop: 'limit' }], // max size, keeps aspect ratio
-    },
-});
+const multer = require('multer');
+const cloudinary = require('../config/cloudinary');
+const { createCloudinaryStorage } = require('./cloudinaryStorage');
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 const upload = multer({
-    storage: storage,
+    storage: createCloudinaryStorage({ cloudinary }),
     limits: {
-        fileSize: 10 * 1024 * 1024, // 10MB max
+        fileSize: MAX_FILE_BYTES,
+        // One photograph per request. Without this a single upload can carry
+        // arbitrarily many parts.
+        files: 1,
     },
 });
 

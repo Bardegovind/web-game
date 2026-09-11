@@ -13,10 +13,13 @@ const { createLettersService } = require('../services/letters.service');
 const { createDailyService } = require('../services/daily.service');
 const { createChatService } = require('../services/chat.service');
 const { QUESTION_PROMPTS, LETTER_PROMPTS } = require('../services/prompts');
+const { createNotifier } = require('../services/notifier');
+const PushSubscriptionModel = require('../models/PushSubscription');
 
 const letters = createLettersService({ Letter });
 const daily = createDailyService({ Question, GalleryItem, prompts: QUESTION_PROMPTS });
 const chat = createChatService({ Message, UserConversation });
+const notifier = createNotifier({ PushSubscription: PushSubscriptionModel, log: console.log });
 
 /** Turns a thrown service error into a message that can be shown as-is. */
 function fail(res, error, status = 400) {
@@ -234,8 +237,39 @@ const answerQuestion = async (req, res) => {
     }
 };
 
+// ---- Push ----
+
+/**
+ * POST /api/chamber/push/subscribe
+ *
+ * Remembers where a device can be reached. Inert until push is configured,
+ * which needs a secure origin — so this stores the subscription and says so
+ * honestly rather than implying notifications now work.
+ */
+const subscribePush = async (req, res) => {
+    try {
+        await notifier.subscribe({
+            username: req.user.username,
+            subscription: req.body.subscription,
+        });
+        return res.json({ success: true, active: notifier.configured });
+    } catch (error) {
+        return fail(res, error);
+    }
+};
+
+const unsubscribePush = async (req, res) => {
+    try {
+        await notifier.unsubscribe(req.body.endpoint);
+        return res.json({ success: true });
+    } catch (error) {
+        return fail(res, error);
+    }
+};
+
 module.exports = {
     getToday,
+    subscribePush, unsubscribePush,
     listLetters, writeLetter, openLetter,
     listStory, addStoryEntry, deleteStoryEntry,
     listBucket, addBucketItem, toggleBucketItem, deleteBucketItem,

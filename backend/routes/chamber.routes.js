@@ -24,6 +24,9 @@ router.post('/bucket', c.addBucketItem);
 router.patch('/bucket/:id', c.toggleBucketItem);
 router.delete('/bucket/:id', c.deleteBucketItem);
 
+router.post('/push/subscribe', c.subscribePush);
+router.post('/push/unsubscribe', c.unsubscribePush);
+
 router.get('/question', c.getQuestion);
 router.post('/question', c.answerQuestion);
 

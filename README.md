@@ -38,9 +38,9 @@ proxies the API and the websocket to port 5000.
 ## Tests
 
 ```bash
-npm test          # 77 unit tests — no database, no browser, fast
-npm run test:e2e  # 18 tests driving real Chrome, including the corner taps
-npm run test:int  # 21 tests against a real MongoDB and real socket clients
+npm test          # 123 unit tests — no database, no browser, fast
+npm run test:e2e  # 32 tests driving real Chrome, including the corner taps
+npm run test:int  # 43 tests against a real MongoDB and real socket clients
 npm run test:all  # all three
 ```
 
@@ -48,11 +48,12 @@ npm run test:all  # all three
 One of them performs the whole journey — ritual, password, chamber, a live
 message from the other person — in a real browser.
 
-The integration tests need a throwaway database. They skip with a clear message
-if it is not running:
+The integration tests need a throwaway database, and the scaling test also
+wants Redis. Both skip with a clear message if they are not running:
 
 ```bash
 docker run -d --name wg-test-mongo -p 27018:27017 mongo:7
+docker run -d --name wg-test-redis -p 6380:6379 redis:7-alpine
 ```
 
 **Never point the tests, or a dev server, at the production `MONGO_URI`.**
@@ -136,13 +137,32 @@ presence:update
 Messages carry a `clientId` that the server echoes, so a message rendered
 before the round trip can be reconciled instead of appearing twice.
 
-## Where this is going
+## What is in it
 
-- **M1 — foundation** ✅ reliability, identity, realtime, security, tests, Docker
+- **M1** reliability, identity, realtime, security, tests, Docker
 - **M2** React + Vite + TypeScript + Tailwind chamber (the game stays vanilla)
-- **M3** Memories, Our Story, Open When, Surprises
-- **M4** reactions, replies, read-receipt UI, optimistic send
-- **M5** PWA + push notifications
-- **M6** Redis adapter and multiple instances, only when deployment needs it
+- **M3** today, memories, our story, open-when letters, question of the day, shared list
+- **M4** reactions, replies, read receipts, optimistic send
+- **M5** installable as a PWA; push is wired and waits on keys and HTTPS
+- **M6** Redis adapter proven across two instances, security headers, graceful shutdown
+
+### Installing it on a phone
+
+It installs as **Tic Tac Toe**, with the game's icon. That is deliberate: an
+app called "Our Place" with a heart on it would hand the secret to anyone
+glancing at her home screen, which is the one thing this is built to avoid. The
+same goes for notifications — they say your turn, never what is waiting or who
+it is from.
+
+Installing needs HTTPS. On localhost the service worker still registers, so
+offline behaviour can be tested.
+
+### Running more than one instance
+
+Set `REDIS_URL`. Nothing else changes: the socket layer already addresses
+rooms rather than connections, so the adapter is the only moving part.
+`tests/integration/scaling.int.js` runs two real instances and proves a message
+crosses between them — and includes the control showing it does not without
+Redis.
 
 Design notes: `docs/superpowers/specs/`.

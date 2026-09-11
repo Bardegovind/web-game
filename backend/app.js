@@ -2,6 +2,7 @@
 
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 const path = require('path');
 
 const authRoutes = require('./routes/auth.routes');
@@ -29,6 +30,36 @@ function createApp(options) {
     const allowedOrigins = config.allowedOrigins || [];
 
     const app = express();
+
+    /**
+     * Security headers.
+     *
+     * The content policy is written out rather than left at the default because
+     * the default would block the app's own fonts and websocket. Everything
+     * listed is something the page genuinely loads; nothing else is permitted,
+     * which is what makes an injected script unable to phone anywhere.
+     */
+    app.use(helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'"],
+                // Tailwind and the game's layered import both emit inline styles.
+                styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+                fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+                // Photographs live on Cloudinary; data: covers inline placeholders.
+                imgSrc: ["'self'", 'data:', 'blob:', 'https://res.cloudinary.com'],
+                connectSrc: ["'self'", 'ws:', 'wss:'],
+                objectSrc: ["'none'"],
+                frameAncestors: ["'none'"],
+                baseUri: ["'self'"],
+                formAction: ["'self'"],
+            },
+        },
+        // The chamber loads images from Cloudinary; the strictest setting blocks them.
+        crossOriginEmbedderPolicy: false,
+        crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }));
 
     // The frontend is served by this same process, so cross-origin access is
     // not needed for normal use and stays off unless configured.
