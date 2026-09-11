@@ -25,6 +25,12 @@ const chat = {
     // Track unread messages
     unreadCount: 0,
 
+    // Server-supplied conversation summaries: peer, online, unreadCount.
+    conversations: [],
+
+    // Ids already rendered, so a reconnect cannot duplicate a message.
+    seenMessageIds: new Set(),
+
     init() {
         // UI Elements
         this.userListEl = document.getElementById('user-list');
@@ -93,7 +99,8 @@ const chat = {
                 this.socket.emit('message:send', {
                     receiver: this.chattingWith,
                     type: 'image',
-                    fileUrl: result.fileUrl
+                    fileUrl: result.fileUrl,
+                    clientId: this.newClientId(),
                 });
             }
         } catch (error) {
@@ -153,28 +160,40 @@ const chat = {
             auth: { token },
         });
 
-        // Online users list update
-        this.socket.on('users:online', (users) => {
-            this.renderUserList(users);
+        // Presence and connection state
+        this.socket.on('presence:update', () => this.renderUserList());
+        this.socket.on('connect', () => {
+            this.setConnectionState('online');
+            // Re-sync after any gap, so nothing that arrived while the socket
+            // was down is missed.
+            this.renderUserList();
+            if (this.chattingWith) this.openChat(this.chattingWith);
         });
+        this.socket.on('disconnect', () => this.setConnectionState('reconnecting'));
+        this.socket.io.on('reconnect_attempt', () => this.setConnectionState('reconnecting'));
 
         // Receive message
-        this.socket.on('message:receive', (msg) => {
+        this.socket.on('message:new', (msg) => {
             if (this.chattingWith === msg.sender) {
                 this.messages.push(msg);
                 this.appendMessage(msg);
                 this.scrollToBottom();
-            } else {
-                this.unreadCount++;
-                this.updateBadge();
+                this.markConversationRead(msg.sender);
             }
+            this.renderUserList();
         });
 
-        // Sent confirmation
+        // Sent confirmation — arrives on every tab this person has open.
         this.socket.on('message:sent', (msg) => {
-            this.messages.push(msg);
-            this.appendMessage(msg);
-            this.scrollToBottom();
+            if (this.seenMessageIds.has(msg._id)) return;
+            this.seenMessageIds.add(msg._id);
+
+            if (this.chattingWith === msg.receiver) {
+                this.messages.push(msg);
+                this.appendMessage(msg);
+                this.scrollToBottom();
+            }
+            this.renderUserList();
         });
 
         // Typing indicators
@@ -189,6 +208,30 @@ const chat = {
                 this.typingIndicator.style.display = 'none';
             }
         });
+    },
+
+    /** An id for a message this client is about to send. */
+    newClientId() {
+        if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+            return window.crypto.randomUUID();
+        }
+        return `c-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    },
+
+    /** Tells the server this conversation has been seen, and refreshes counts. */
+    markConversationRead(peer) {
+        if (!peer) return;
+        if (this.socket) this.socket.emit('message:read', { peer });
+        api.post(`/chat/read/${peer}`, {})
+            .then(() => this.renderUserList())
+            .catch(() => { /* the socket event is the primary path */ });
+    },
+
+    /** Reflects the socket state without ever showing a technical error. */
+    setConnectionState(state) {
+        const el = document.getElementById('chat-with');
+        if (!el) return;
+        el.dataset.connection = state;
     },
 
     /**
@@ -207,56 +250,65 @@ const chat = {
     /**
      * Merge all chamber users (Online + Offline) into sidebar
      */
-    async renderUserList(onlineUsers = []) {
+    async renderUserList() {
         try {
-            // First, get ALL users from API
-            const result = await api.get('/chat/users');
-            if (result.success) {
-                const allUsers = result.users.filter(u => u.username !== this.currentUsername);
+            // One request supplies the sidebar and every unread count. The
+            // counts come from the server, so they are still right after a
+            // refresh, a reconnect or the phone going to sleep — an in-memory
+            // tally could never manage that.
+            const result = await api.get('/chat/conversations');
+            if (!result.success) return;
 
-                if (allUsers.length === 0) {
-                    this.usersEmptyEl.classList.add('show');
-                    this.userListEl.innerHTML = '';
-                    return;
+            const peers = result.conversations || [];
+            this.conversations = peers;
+
+            if (peers.length === 0) {
+                this.usersEmptyEl.classList.add('show');
+                this.userListEl.innerHTML = '';
+                this.updateBadge();
+                return;
+            }
+
+            this.usersEmptyEl.classList.remove('show');
+            this.userListEl.innerHTML = '';
+
+            peers.forEach((peer) => {
+                const item = document.createElement('div');
+                item.className = `user-item ${this.chattingWith === peer.username ? 'active' : ''}`;
+
+                // Nodes rather than a markup string: a username is only as
+                // trustworthy as whoever typed it.
+                const dot = document.createElement('span');
+                dot.className = `user-status-dot ${peer.isOnline ? 'online' : 'offline'}`;
+
+                const name = document.createElement('span');
+                name.className = 'user-item-name';
+                name.textContent = `@${peer.username}`;
+
+                const status = document.createElement('span');
+                status.className = 'user-status-text';
+                status.textContent = peer.isOnline ? 'Online' : 'Offline';
+
+                const info = document.createElement('div');
+                info.className = 'user-item-info';
+                info.appendChild(name);
+                info.appendChild(status);
+
+                item.appendChild(dot);
+                item.appendChild(info);
+
+                if (peer.unreadCount > 0) {
+                    const unread = document.createElement('span');
+                    unread.className = 'user-unread-badge';
+                    unread.textContent = String(peer.unreadCount);
+                    item.appendChild(unread);
                 }
 
-                this.usersEmptyEl.classList.remove('show');
-                this.userListEl.innerHTML = '';
+                item.addEventListener('click', () => this.openChat(peer.username));
+                this.userListEl.appendChild(item);
+            });
 
-                // Extract online usernames
-                const onlineNames = onlineUsers.map(u => u.username);
-
-                allUsers.forEach((user) => {
-                    const isOnline = onlineNames.includes(user.username);
-
-                    const item = document.createElement('div');
-                    item.className = `user-item ${this.chattingWith === user.username ? 'active' : ''}`;
-
-                    // Nodes rather than a markup string. A username is only as
-                    // trustworthy as whoever typed it, which on the legacy
-                    // shared-password path is anyone at all.
-                    const dot = document.createElement('span');
-                    dot.className = `user-status-dot ${isOnline ? 'online' : 'offline'}`;
-
-                    const name = document.createElement('span');
-                    name.className = 'user-item-name';
-                    name.textContent = `@${user.username}`;
-
-                    const status = document.createElement('span');
-                    status.className = 'user-status-text';
-                    status.textContent = isOnline ? 'Online' : 'Offline';
-
-                    const info = document.createElement('div');
-                    info.className = 'user-item-info';
-                    info.appendChild(name);
-                    info.appendChild(status);
-
-                    item.appendChild(dot);
-                    item.appendChild(info);
-                    item.addEventListener('click', () => this.openChat(user.username));
-                    this.userListEl.appendChild(item);
-                });
-            }
+            this.updateBadge();
         } catch (error) {
             console.error('Sidebar error:', error);
         }
@@ -272,9 +324,8 @@ const chat = {
         this.chatActive.style.display = 'flex';
         this.typingIndicator.style.display = 'none';
 
-        // Reset unread
-        this.unreadCount = 0;
-        this.updateBadge();
+        // Seen — recorded on the server so it survives a reload.
+        this.markConversationRead(username);
 
         // Highlight active user in sidebar
         document.querySelectorAll('.user-item').forEach(el => {
@@ -310,7 +361,11 @@ const chat = {
         this.socket.emit('message:send', {
             receiver: this.chattingWith,
             text,
-            type: 'text'
+            type: 'text',
+            // Echoed back by the server. Lets a message rendered before the
+            // round trip be reconciled with the stored one instead of appearing
+            // twice, and makes a resend after a reconnect identifiable.
+            clientId: this.newClientId(),
         });
 
         this.chatInput.value = '';
@@ -393,8 +448,13 @@ const chat = {
      * Update unread chat badge
      */
     updateBadge() {
-        if (this.unreadCount > 0) {
-            this.chatBadge.textContent = this.unreadCount;
+        const total = (this.conversations || [])
+            .reduce((sum, c) => sum + (c.unreadCount || 0), 0);
+
+        this.unreadCount = total;
+
+        if (total > 0) {
+            this.chatBadge.textContent = String(total);
             this.chatBadge.style.display = 'inline';
         } else {
             this.chatBadge.style.display = 'none';

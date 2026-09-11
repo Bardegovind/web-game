@@ -28,6 +28,7 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.14",
-    "playwright-core": "^1.63.0"
+    "playwright-core": "^1.63.0",
+    "socket.io-client": "^4.8.3"
   }
 }

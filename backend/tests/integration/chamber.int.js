@@ -16,6 +16,7 @@ const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { isReachable, SKIP_MESSAGE } = require('./requireMongo');
 
 const MONGO_URI = process.env.TEST_MONGO_URI || 'mongodb://127.0.0.1:27018/wg_int_test';
 const PORT = 5099;
@@ -84,6 +85,8 @@ const authed = (token, url, init) =>
     }).then((r) => r.json().then((body) => ({ status: r.status, body })));
 
 test('chamber integration', async (t) => {
+    if (!(await isReachable(MONGO_URI))) return t.skip(SKIP_MESSAGE);
+
     await mongoose.connect(MONGO_URI);
     await mongoose.connection.db.dropDatabase();
     await mongoose.disconnect();
