@@ -29,12 +29,36 @@
 
     function createTapZones(options) {
         const opts = options || {};
+        // Set haptics: false to turn the confirmation tick off entirely.
+        if (opts.haptics === undefined) opts.haptics = true;
         const doc = opts.document || document;
         const onUnlock = opts.onUnlock || function () {};
         const clock = opts.now || function () { return Date.now(); };
         const sequence = opts.sequence || TapSequence.createTapSequence(opts.sequenceOptions);
 
         let bindings = [];
+
+        /**
+         * A tap that counted gives the faintest possible tick back.
+         *
+         * Silent, invisible, and felt only by the hand holding the phone — but
+         * it removes the guesswork entirely. Without it a tap that missed the
+         * corner is indistinguishable from one that landed, which is how
+         * sixteen taps turns into eighteen.
+         *
+         * Only accepted taps tick. A near-miss stays silent, so the count in
+         * her hand is always the count the machine has.
+         */
+        function confirmTap() {
+            if (!opts.haptics) return;
+            if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+
+            try {
+                navigator.vibrate(8);
+            } catch (error) {
+                // Unsupported or blocked. The sequence works regardless.
+            }
+        }
 
         function handlePointerDown(zoneId) {
             return function (event) {
@@ -43,6 +67,8 @@
                 event.preventDefault();
 
                 const result = sequence.tap(zoneId, clock());
+
+                if (result.progressed || result.unlocked) confirmTap();
 
                 if (result.unlocked) {
                     disarm();

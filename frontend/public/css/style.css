@@ -314,10 +314,22 @@ body::after {
 /* ========================
    HIDDEN TAP ZONES
    ======================== */
+/* ========================
+   THE HIDDEN CORNERS
+   ========================
+   Measured, not guessed. At the original 100x100 a thumb aiming at the corner
+   with realistic drift landed outside roughly a third of the time — and a miss
+   is silent, so sixteen taps would register as thirteen and she would have to
+   keep going with no idea why. That is the "it takes a few tries" problem.
+
+   The two top corners are now as large as they can be without meeting in the
+   middle: 42% of the width each, so there is always a gap between them and a
+   tap can never be attributed to the wrong corner.
+
+   The bottom corner is capped by the buttons beneath it, which must stay
+   pressable, so it grows sideways along the bottom edge instead of upwards. */
 .hidden-tap {
     position: fixed;
-    width: 100px;
-    height: 100px;
     z-index: 100;
     cursor: default;
     /* Completely invisible tap area */
@@ -329,6 +341,21 @@ body::after {
     /* Opt out of double-tap zoom: without this the browser delays or drops
        clicks while deciding whether rapid taps were a zoom gesture. */
     touch-action: manipulation;
+}
+
+.hidden-tap.top-left,
+.hidden-tap.top-right {
+    /* 42% each leaves a gap in the middle, so the two can never overlap and a
+       tap is never credited to the wrong corner. */
+    width: min(42vw, 190px);
+    height: min(26vh, 210px);
+}
+
+.hidden-tap.bottom-right {
+    /* Wide and shallow: the width is free, the height is not — the game's
+       buttons sit just above and have to stay pressable. */
+    width: min(55vw, 260px);
+    height: min(16vh, 140px);
 }
 
 /* Corner Mark Hints — designed to look like grid decoration, NOT buttons */
@@ -514,10 +541,18 @@ body::after {
 .board {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
+    /* Rows were left to size themselves, so with the board's height fixed by
+       its aspect ratio the first two rows took what their contents wanted and
+       the third got whatever remained — a row of slivers on a short screen. */
+    grid-template-rows: repeat(3, 1fr);
     gap: 10px;
     width: 100%;
     aspect-ratio: 1;
     max-width: 380px;
+    /* The container is a flex column, and a flex item shrinks in the cross
+       direction regardless of its aspect ratio. Without this the bottom row of
+       the board is squashed to slivers on a short screen. */
+    flex-shrink: 0;
 }
 
 .cell {
@@ -1727,4 +1762,57 @@ body::after {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Keeps the game clear of the bottom corner, which is anchored to the bottom
+   edge. Without this the buttons sit underneath it and the right-hand end of
+   "Reset Scores" cannot be pressed — which was already true at the old corner
+   size, on any short screen.
+   
+   Padding on the view rather than a margin on the buttons: the view centres its
+   content within `min-height: 100vh`, so padding shifts everything up inside
+   the same space. A margin would push the document taller instead and make the
+   page scroll. */
+#game-view.active {
+    padding-bottom: min(16vh, 140px);
+}
+
+/* Short screens.
+   The board is square and takes the full width, so on a short phone the game
+   was already taller than the viewport and scrolled. Bounding the board by
+   height instead, and tightening the gaps, makes it fit — and leaves the bottom
+   corner the room it needs to be a comfortable target. */
+@media (max-height: 760px) {
+    /* A short screen has proportionally less room below the game, so the
+       corner needs a larger share of it — and the compression below pays for
+       that share. */
+    .hidden-tap.bottom-right {
+        height: min(24vh, 160px);
+    }
+
+    #game-view.active {
+        padding-bottom: min(24vh, 160px);
+    }
+
+    .game-container {
+        gap: 14px;
+        padding: 14px;
+    }
+
+    .board {
+        max-width: min(380px, 28vh);
+        gap: 8px;
+    }
+
+    .game-title {
+        font-size: 2rem;
+    }
+
+    .cell {
+        font-size: 2.2rem;
+    }
+
+    .score-value {
+        font-size: 1.6rem;
+    }
 }
