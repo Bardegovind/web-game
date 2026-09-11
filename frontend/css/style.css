@@ -1618,4 +1618,113 @@ body::after {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+
+/* ========================
+   SIDEBAR USER ROWS
+   ======================== */
+/* These were relying on whitespace between the spans in a template literal to
+   separate the name from the status. Rendering them as real nodes removed that
+   accidental space, so the layout is declared properly here instead. */
+.user-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.user-item-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-status-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+}
+
+.user-unread-badge {
+    margin-left: auto;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    background: var(--accent-primary);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ========================
+   DAY SEPARATORS
+   ======================== */
+/* A bare clock time on every message makes a conversation spanning two
+   evenings look out of order. The day heading is what makes it read correctly. */
+.day-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 18px 0 10px;
+}
+
+.day-separator span {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-full);
+    padding: 4px 12px;
+}
+
+/* ========================
+   SIDEBAR USER ROWS
+   ======================== */
+/* These relied on whitespace between spans in a template literal to separate
+   the name from the status. Rendering them as real nodes removed that
+   accidental space, so the layout is declared properly here instead. */
+.user-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.user-item-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-status-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    letter-spacing: 0.2px;
+}
+
+.user-unread-badge {
+    margin-left: auto;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--radius-full);
+    background: var(--accent-primary);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}

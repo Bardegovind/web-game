@@ -30,6 +30,7 @@ const chat = {
 
     // Ids already rendered, so a reconnect cannot duplicate a message.
     seenMessageIds: new Set(),
+    lastRenderedAt: null,
 
     init() {
         // UI Elements
@@ -336,6 +337,7 @@ const chat = {
         // Load message history
         this.messagesContainer.innerHTML = '';
         this.messages = [];
+        this.lastRenderedAt = null;
 
         try {
             const result = await api.get(`/chat/messages/${username}`);
@@ -377,7 +379,31 @@ const chat = {
     /**
      * Append a single message to the chat view
      */
+    /**
+     * Inserts a day heading when a message belongs to a different day than the
+     * one before it. Without this a conversation spanning two evenings reads as
+     * though the clock ran backwards.
+     */
+    appendDaySeparatorIfNeeded(createdAt) {
+        if (this.lastRenderedAt && TimeFormat.isSameDay(this.lastRenderedAt, createdAt)) return;
+
+        const label = TimeFormat.formatDayLabel(createdAt, new Date());
+        if (!label) return;
+
+        const separator = document.createElement('div');
+        separator.className = 'day-separator';
+
+        const text = document.createElement('span');
+        text.textContent = label;
+        separator.appendChild(text);
+
+        this.messagesContainer.appendChild(separator);
+    },
+
     appendMessage(msg) {
+        this.appendDaySeparatorIfNeeded(msg.createdAt);
+        this.lastRenderedAt = msg.createdAt;
+
         const bubble = document.createElement('div');
         bubble.id = msg._id || 'temp-' + Date.now();
 
@@ -407,10 +433,7 @@ const chat = {
 
         const time = document.createElement('span');
         time.className = 'message-time';
-        time.textContent = new Date(msg.createdAt).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-        });
+        time.textContent = TimeFormat.formatTime(msg.createdAt);
         bubble.appendChild(time);
 
         this.messagesContainer.appendChild(bubble);
