@@ -21,8 +21,9 @@ export function useUploadMemory() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (file: File) => {
+        mutationFn: ({ file, caption }: { file: File; caption: string }) => {
             const form = new FormData();
+            form.append('caption', caption.trim());
             form.append('image', file);
             return api.upload<{ image: Memory }>('/gallery/upload', form);
         },

@@ -157,7 +157,7 @@ export function App() {
             <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                 <ScreenStage screen={screen} direction={direction}>
                 {screen === 'today' && <Today onOpenImage={setLightbox} />}
-                {screen === 'moments' && <MemoryGrid onOpenImage={setLightbox} />}
+                {screen === 'moments' && <MemoryGrid onOpenImage={setLightbox} sheetContainer={root} />}
                 {screen === 'letters' && <Letters />}
                 {screen === 'story' && <Story />}
                 {screen === 'list' && <Bucket />}
