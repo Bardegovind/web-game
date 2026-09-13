@@ -18,36 +18,39 @@
 @import "tw-animate-css";
 
 /**
- * The chamber is the same room as the game with the light switched on.
+ * After dark, together.
  *
- * The game is cold and electric — neon violet on near-black, a grid, particles.
- * Repeating that here would make this feel like another screen of the arcade
- * rather than somewhere you arrive. So the chamber is lit warm: amber is the
- * accent inside, and the game's violet is kept only as a thread back to it.
+ * The chamber is a room at night lit only by the two of them: frosted glass
+ * floating over a slow rose-and-orchid glow, and a few small hearts drifting up
+ * behind everything. The token names are the room's old ones (lamp, velvet,
+ * chalk) so every existing utility picks up the new colours unchanged.
  */
 @theme {
-    --color-ink: #0b0810;
-    --color-velvet: #171022;
-    --color-velvet-lifted: #1f1630;
-    --color-lamp: #e8c39e;
-    --color-lamp-dim: #b9906a;
-    --color-rose: #d98ba8;
-    --color-violet: #7c3aed;
-    --color-chalk: #ede7f2;
-    --color-dust: #8a7f98;
-    --color-hairline: rgba(237, 231, 242, 0.08);
+    --color-ink: #0a0610;
+    --color-velvet: #1a0f1f;
+    --color-velvet-lifted: #26152d;
+    --color-lamp: #ff6b9d;
+    --color-lamp-dim: #d4577f;
+    --color-rose: #ffa3c4;
+    --color-violet: #c44dff;
+    --color-chalk: #fbeaf2;
+    --color-dust: #a893a6;
+    --color-hairline: rgba(255, 214, 231, 0.09);
+    /* Love-red. Hearts and bursts only. */
+    --color-heart: #ff3c83;
 
-    --font-display: "Fraunces", Georgia, serif;
+    /* Outfit is loaded by the page; Inter ships in the chamber bundle. */
+    --font-display: "Outfit", system-ui, sans-serif;
     --font-ui: "Outfit", system-ui, sans-serif;
+    --font-body: "Inter Variable", "Inter", system-ui, sans-serif;
 
     --radius-bubble: 18px;
+    --radius-card: 20px;
 }
 
 /**
  * shadcn/ui's colour names, pointed at the chamber's own palette. The values
  * live on .chamber-root (below), so they exist only inside the chamber.
- * The radius scale is left alone on purpose: remapping it would round every
- * existing corner, and the look is Slice 3's job.
  */
 @theme inline {
     --color-background: var(--background);
@@ -99,17 +102,25 @@
     }
 
     .chamber-root {
-        font-family: var(--font-ui);
+        /*
+         * The fill behind white text. The portfolio's cherry stops (#ff6b9d →
+         * #c44dff) give white text only 2.7:1 and 3.6:1, so the fill is the
+         * same two colours taken deeper, until white reads at 4.7:1 or better
+         * at both ends and through the middle.
+         */
+        --gradient-love: linear-gradient(135deg, #d42f6c 0%, #a236dd 100%);
+        --gradient-love-2: linear-gradient(135deg, #a236dd 0%, #d61f66 100%);
+        /* The bright original, for anything that carries no small text:
+           the wordmark, the nav pill, the entrance tile, the hearts. */
+        --gradient-love-bright: linear-gradient(135deg, #ff6b9d 0%, #c44dff 100%);
+        --gradient-badge: linear-gradient(135deg, #d42f6c 0%, #c81f60 100%);
+        --glow-rose: 0 0 32px rgba(255, 107, 157, 0.14);
+
+        font-family: var(--font-body);
         color: var(--color-chalk);
-        background: var(--color-ink);
-        /* A single warm source, top-left, like a lamp in the corner. */
-        background-image: radial-gradient(
-            120% 80% at 12% 0%,
-            rgba(232, 195, 158, 0.08) 0%,
-            rgba(124, 58, 237, 0.05) 38%,
-            transparent 72%
-        );
+        background-color: var(--color-ink);
         -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
     }
 
     .chamber-root ::selection {
@@ -117,11 +128,11 @@
         color: var(--color-ink);
     }
 
-    /* Keyboard users must always be able to see where they are. */
+    /* Keyboard users must always be able to see where they are. The outline
+       follows each element's own rounding. */
     .chamber-root :focus-visible {
         outline: 2px solid var(--color-lamp);
         outline-offset: 2px;
-        border-radius: 4px;
     }
 
     .chamber-root {
@@ -146,6 +157,326 @@
     }
 }
 
+/**
+ * The room's materials. Written as scoped classes rather than utilities so
+ * nothing named here can reach the game page, and placed in `components` so a
+ * utility on the same element still wins.
+ */
+@layer components {
+    /* Frosted glass: a card that floats over the glow. */
+    .chamber-root .glass {
+        background-color: rgba(255, 255, 255, 0.04);
+        border: 1px solid var(--color-hairline);
+        border-radius: var(--radius-card);
+        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px);
+    }
+
+    /* Glass without the blur, for things there are many of in a scrolling
+       list (message bubbles), where a blur per item costs every frame. */
+    .chamber-root .glass-flat {
+        background-color: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--color-hairline);
+    }
+
+    /* Solid velvet glass: sheets, toasts, dialogs, the banner. */
+    .chamber-root .glass-solid {
+        background-color: rgba(26, 15, 31, 0.92);
+        border: 1px solid var(--color-hairline);
+        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px);
+        box-shadow:
+            0 18px 48px rgba(0, 0, 0, 0.45),
+            0 0 40px rgba(255, 60, 131, 0.1);
+    }
+
+    .chamber-root .glass-hover {
+        transition:
+            border-color 0.3s ease,
+            box-shadow 0.3s ease,
+            background-color 0.3s ease;
+    }
+
+    @media (hover: hover) {
+        .chamber-root .glass-hover:hover {
+            border-color: rgba(255, 107, 157, 0.28);
+            box-shadow: var(--glow-rose);
+        }
+    }
+
+    /* The chosen one among many: a conversation that is open, for instance. */
+    .chamber-root .glass-selected {
+        background-color: rgba(255, 107, 157, 0.08);
+        border-color: rgba(255, 107, 157, 0.42);
+        box-shadow:
+            0 0 0 1px rgba(255, 107, 157, 0.12),
+            0 0 28px rgba(255, 107, 157, 0.16);
+    }
+
+    /* On a wide screen the two halves of the chat each become a pane. */
+    @media (min-width: 48rem) {
+        .chamber-root .chat-pane {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--color-hairline);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            -webkit-backdrop-filter: blur(20px);
+            backdrop-filter: blur(20px);
+        }
+    }
+
+    .chamber-root .love-text {
+        background-image: var(--gradient-love-bright);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .chamber-root .love-fill {
+        background-image: var(--gradient-love);
+        color: #fff;
+    }
+
+    .chamber-root .love-fill-bright {
+        background-image: var(--gradient-love-bright);
+    }
+
+    .chamber-root .love-badge {
+        background-image: var(--gradient-badge);
+        color: #fff;
+        box-shadow:
+            0 0 0 2px var(--color-ink),
+            0 2px 10px rgba(255, 60, 131, 0.35);
+    }
+
+    /* The primary action. A second gradient fades in on hover. */
+    .chamber-root .btn-love {
+        position: relative;
+        isolation: isolate;
+        background-image: var(--gradient-love);
+        color: #fff;
+        font-family: var(--font-display);
+        font-weight: 600;
+        box-shadow: 0 4px 22px rgba(255, 60, 131, 0.3);
+        transition:
+            box-shadow 0.3s ease,
+            opacity 0.2s ease;
+    }
+
+    .chamber-root .btn-love::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+        background-image: var(--gradient-love-2);
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    @media (hover: hover) {
+        .chamber-root .btn-love:not(:disabled):hover {
+            box-shadow: 0 6px 30px rgba(196, 77, 255, 0.36);
+        }
+
+        .chamber-root .btn-love:not(:disabled):hover::before {
+            opacity: 1;
+        }
+    }
+
+    .chamber-root .btn-love:disabled {
+        box-shadow: none;
+        cursor: default;
+    }
+
+    /* The quieter choice beside it. */
+    .chamber-root .btn-soft {
+        background-color: transparent;
+        border: 1px solid rgba(255, 107, 157, 0.3);
+        color: var(--color-chalk);
+        font-family: var(--font-display);
+        font-weight: 500;
+        transition:
+            background-color 0.3s ease,
+            border-color 0.3s ease,
+            color 0.3s ease;
+    }
+
+    @media (hover: hover) {
+        .chamber-root .btn-soft:not(:disabled):hover {
+            background-color: rgba(255, 107, 157, 0.08);
+            border-color: var(--color-lamp);
+            color: var(--color-lamp);
+        }
+    }
+
+    /* A field on glass. */
+    .chamber-root .field {
+        background-color: rgba(10, 6, 16, 0.45);
+        border: 1px solid var(--color-hairline);
+        color: var(--color-chalk);
+        transition:
+            border-color 0.25s ease,
+            box-shadow 0.25s ease;
+    }
+
+    .chamber-root .field::placeholder {
+        color: rgba(168, 147, 166, 0.75);
+    }
+
+    .chamber-root .field:focus {
+        outline: none;
+        border-color: rgba(255, 107, 157, 0.5);
+        box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.12);
+    }
+
+    /* Messages. Mine carry the love gradient; hers are glass. */
+    .chamber-root .bubble-mine {
+        background-image: var(--gradient-love);
+        color: #fff;
+        box-shadow: 0 6px 22px rgba(255, 60, 131, 0.2);
+    }
+
+    .chamber-root .bubble-theirs {
+        background-color: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--color-hairline);
+        color: var(--color-chalk);
+    }
+
+    .chamber-root .love-bar {
+        background-color: rgba(10, 6, 16, 0.72);
+        border-top: 1px solid var(--color-hairline);
+        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(20px);
+    }
+
+    /* Placeholders shimmer rather than pulse. */
+    .chamber-root .chamber-shimmer {
+        background-color: rgba(38, 21, 45, 0.7);
+        background-image: linear-gradient(
+            100deg,
+            transparent 20%,
+            rgba(255, 163, 196, 0.07) 50%,
+            transparent 80%
+        );
+        background-size: 200% 100%;
+        background-repeat: no-repeat;
+        animation: chamber-shimmer 1.8s linear infinite;
+    }
+
+    /* The backdrop. Every layer is decoration: it never takes a pointer. */
+    .chamber-root .love-backdrop {
+        position: absolute;
+        inset: 0;
+        z-index: -10;
+        overflow: hidden;
+        pointer-events: none;
+    }
+
+    .chamber-root .love-glow {
+        position: absolute;
+        border-radius: 9999px;
+        will-change: transform;
+        animation: chamber-breathe 12s ease-in-out infinite alternate;
+    }
+
+    .chamber-root .love-noise {
+        position: absolute;
+        inset: 0;
+        opacity: 0.4;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
+    }
+
+    .chamber-root .love-heart {
+        position: absolute;
+        bottom: -24px;
+        opacity: 0;
+        will-change: transform, opacity;
+        animation: chamber-heart-drift var(--heart-duration, 20s) linear infinite;
+        animation-delay: var(--heart-delay, 0s);
+    }
+
+    .chamber-root .love-cursor-glow {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: -10;
+        width: 400px;
+        height: 400px;
+        border-radius: 9999px;
+        pointer-events: none;
+        opacity: 0;
+        background: radial-gradient(circle, rgba(255, 107, 157, 0.07) 0%, transparent 70%);
+        will-change: transform;
+        transition:
+            transform 0.12s ease-out,
+            opacity 0.4s ease;
+    }
+
+    .chamber-root .chamber-heartbeat {
+        animation: chamber-heartbeat 2.4s ease-in-out infinite;
+        transform-origin: center;
+    }
+}
+
+/* Keyframe names are global, so they carry the chamber's prefix: the game's
+   stylesheet has its own floats and pulses that must not be replaced. */
+@keyframes chamber-breathe {
+    from {
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+    to {
+        transform: translate3d(0, 0, 0) scale(1.06);
+    }
+}
+
+@keyframes chamber-heart-drift {
+    0% {
+        transform: translate3d(0, 0, 0) rotate(var(--heart-tilt, 0deg));
+        opacity: 0;
+    }
+    12% {
+        opacity: var(--heart-opacity, 0.15);
+    }
+    50% {
+        transform: translate3d(var(--heart-sway, 12px), -55vh, 0) rotate(calc(var(--heart-tilt, 0deg) * -1));
+    }
+    82% {
+        opacity: var(--heart-opacity, 0.15);
+    }
+    100% {
+        transform: translate3d(0, -112vh, 0) rotate(var(--heart-tilt, 0deg));
+        opacity: 0;
+    }
+}
+
+@keyframes chamber-heartbeat {
+    0%,
+    48%,
+    100% {
+        transform: scale(1);
+    }
+    12% {
+        transform: scale(1.15);
+    }
+    24% {
+        transform: scale(1);
+    }
+    36% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes chamber-shimmer {
+    from {
+        background-position: 150% 0;
+    }
+    to {
+        background-position: -50% 0;
+    }
+}
+
 /* Nothing here insists on moving. */
 @media (prefers-reduced-motion: reduce) {
     .chamber-root *,
@@ -155,11 +486,21 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+
+    /* The glow stays, still; the hearts and the cursor glow go. */
+    .chamber-root .love-glow {
+        animation: none !important;
+    }
+
+    .chamber-root .love-heart,
+    .chamber-root .love-cursor-glow {
+        display: none !important;
+    }
 }
 
 .chamber-scroll {
     scrollbar-width: thin;
-    scrollbar-color: rgba(237, 231, 242, 0.14) transparent;
+    scrollbar-color: rgba(255, 163, 196, 0.16) transparent;
 }
 
 .chamber-scroll::-webkit-scrollbar {
@@ -167,6 +508,6 @@
 }
 
 .chamber-scroll::-webkit-scrollbar-thumb {
-    background: rgba(237, 231, 242, 0.14);
+    background: rgba(255, 163, 196, 0.16);
     border-radius: 999px;
 }

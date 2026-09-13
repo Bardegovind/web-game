@@ -4,6 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { App } from './app/App';
 import { useAuthStore } from './stores/authStore';
+// Body text. The page is frozen and cannot link a new font, so Inter travels
+// in the chamber's own bundle and is served from this origin.
+import '@fontsource-variable/inter';
 import './index.css';
 
 /**

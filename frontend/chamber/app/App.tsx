@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 
 import { Entrance } from './Entrance';
+import { CursorGlow, LoveBackdrop } from './LoveBackdrop';
 import { ConnectionBanner } from '../components/ConnectionBanner';
 import { ConversationList } from '../features/chat/ConversationList';
 import { Conversation } from '../features/chat/Conversation';
@@ -172,6 +173,10 @@ export function App() {
 
     return (
         <div ref={setRoot} className="chamber-root fixed inset-0 z-50 flex flex-col">
+            {/* Decoration only, behind everything, and only while inside. */}
+            <LoveBackdrop />
+            <CursorGlow />
+
             <AnimatePresence>
                 {showEntrance && <Entrance onDone={() => setShowEntrance(false)} />}
             </AnimatePresence>
