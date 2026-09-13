@@ -17,9 +17,11 @@ export function useConversations() {
     // would call the API while she is still on the game screen.
     const isInside = useAuthStore((s) => s.isInside);
 
-    // Unread counts come from the server, so refetching on focus keeps them
-    // honest when she comes back to the tab.
-    return useQuery({ ...conversationsQuery(), enabled: isInside, refetchOnWindowFocus: true, refetchOnMount: 'always' });
+    // This mounts once and never again (App never unmounts), so it relies on
+    // socket invalidation (App's onMessage/onRead/onResync invalidate
+    // conversationsKey) plus refetching on window focus to stay fresh, rather
+    // than on a remount that will never happen.
+    return useQuery({ ...conversationsQuery(), enabled: isInside, refetchOnWindowFocus: true });
 }
 
 export function useMarkRead() {
