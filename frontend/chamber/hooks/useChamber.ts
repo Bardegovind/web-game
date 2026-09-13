@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import { useAuthStore } from '../stores/authStore';
 import type { BucketItem, DailyQuestion, Letter, StoryEntry, Today } from '../types';
@@ -14,23 +14,53 @@ function useInside() {
     return useAuthStore((s) => s.isInside);
 }
 
-export function useToday() {
-    return useQuery({
-        enabled: useInside(),
+/**
+ * Each screen's query, defined once, so a hook and the entry prefetch fetch
+ * exactly the same thing into the same cache entry.
+ */
+export const todayQuery = () =>
+    queryOptions({
         queryKey: todayKey,
         queryFn: () => api.get<{ today: Today }>('/chamber/today').then((r) => r.today),
-        refetchOnWindowFocus: true,
         staleTime: 30_000,
     });
-}
 
-export function useLetters() {
-    return useQuery({
-        enabled: useInside(),
+export const lettersQuery = () =>
+    queryOptions({
         queryKey: lettersKey,
         queryFn: () => api.get<{ letters: Letter[]; prompts: string[] }>('/chamber/letters'),
         staleTime: 30_000,
     });
+
+export const storyQuery = () =>
+    queryOptions({
+        queryKey: storyKey,
+        queryFn: () => api.get<{ entries: StoryEntry[] }>('/chamber/story').then((r) => r.entries),
+        staleTime: 60_000,
+    });
+
+export const bucketQuery = () =>
+    queryOptions({
+        queryKey: bucketKey,
+        queryFn: () => api.get<{ items: BucketItem[] }>('/chamber/bucket').then((r) => r.items),
+        staleTime: 30_000,
+    });
+
+export const questionQuery = () =>
+    queryOptions({
+        queryKey: questionKey,
+        queryFn: () => api.get<{ question: DailyQuestion }>('/chamber/question').then((r) => r.question),
+        staleTime: 60_000,
+    });
+
+export function useToday() {
+    // Prefetched data is shown at once and refreshed on open, so something
+    // written after entry (a message, a letter, an answer) still appears.
+    return useQuery({ ...todayQuery(), enabled: useInside(), refetchOnWindowFocus: true, refetchOnMount: 'always' });
+}
+
+export function useLetters() {
+    return useQuery({ ...lettersQuery(), enabled: useInside(), refetchOnMount: 'always' });
 }
 
 export function useOpenLetter() {
@@ -57,12 +87,7 @@ export function useWriteLetter() {
 }
 
 export function useStory() {
-    return useQuery({
-        enabled: useInside(),
-        queryKey: storyKey,
-        queryFn: () => api.get<{ entries: StoryEntry[] }>('/chamber/story').then((r) => r.entries),
-        staleTime: 60_000,
-    });
+    return useQuery({ ...storyQuery(), enabled: useInside(), refetchOnMount: 'always' });
 }
 
 export function useAddStoryEntry() {
@@ -76,12 +101,7 @@ export function useAddStoryEntry() {
 }
 
 export function useBucket() {
-    return useQuery({
-        enabled: useInside(),
-        queryKey: bucketKey,
-        queryFn: () => api.get<{ items: BucketItem[] }>('/chamber/bucket').then((r) => r.items),
-        staleTime: 30_000,
-    });
+    return useQuery({ ...bucketQuery(), enabled: useInside(), refetchOnMount: 'always' });
 }
 
 export function useAddBucketItem() {
@@ -107,12 +127,7 @@ export function useToggleBucketItem() {
 }
 
 export function useQuestion() {
-    return useQuery({
-        enabled: useInside(),
-        queryKey: questionKey,
-        queryFn: () => api.get<{ question: DailyQuestion }>('/chamber/question').then((r) => r.question),
-        staleTime: 60_000,
-    });
+    return useQuery({ ...questionQuery(), enabled: useInside(), refetchOnMount: 'always' });
 }
 
 export function useAnswerQuestion() {

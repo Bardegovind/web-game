@@ -16,7 +16,9 @@ import { Bucket } from '../features/bucket/Bucket';
 
 import { BottomNav } from './BottomNav';
 import { MoreSheet } from './MoreSheet';
-import { sectionFor, type Screen, type Section } from './navigation';
+import { directionBetween, sectionFor, type Screen, type Section } from './navigation';
+import { ScreenStage } from './ScreenStage';
+import { prefetchChamber } from './prefetch';
 
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
@@ -33,6 +35,7 @@ export function App() {
     const [screen, setScreen] = useState<Screen>('today');
     const [moreOpen, setMoreOpen] = useState(false);
     const [root, setRoot] = useState<HTMLDivElement | null>(null);
+    const [direction, setDirection] = useState<-1 | 0 | 1>(0);
     const [showEntrance, setShowEntrance] = useState(true);
     const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -75,6 +78,11 @@ export function App() {
         if (conversations) notifierRef.current?.seed(conversations);
     }, [conversations]);
 
+    // Every screen's data loads on entry, so no tab opens onto a placeholder.
+    useEffect(() => {
+        if (isInside && token) void prefetchChamber(queryClient);
+    }, [isInside, token, queryClient]);
+
     useEffect(() => {
         if (!isInside || !token) return;
 
@@ -110,6 +118,12 @@ export function App() {
         letters: today?.unopenedLetters ?? 0,
     };
 
+    /** Moves to a screen, sliding from the side of the tab that was tapped. */
+    const go = (next: Screen) => {
+        setDirection(directionBetween(screen, next));
+        setScreen(next);
+    };
+
     return (
         <div ref={setRoot} className="chamber-root fixed inset-0 z-50 flex flex-col">
             <AnimatePresence>
@@ -140,7 +154,8 @@ export function App() {
                 </button>
             </header>
 
-            <main className="flex min-h-0 flex-1 flex-col">
+            <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+                <ScreenStage screen={screen} direction={direction}>
                 {screen === 'today' && <Today onOpenImage={setLightbox} />}
                 {screen === 'moments' && <MemoryGrid onOpenImage={setLightbox} />}
                 {screen === 'letters' && <Letters />}
@@ -182,6 +197,7 @@ export function App() {
                         </div>
                     </div>
                 )}
+                </ScreenStage>
             </main>
 
             <BottomNav
@@ -192,11 +208,11 @@ export function App() {
                         setMoreOpen(true);
                         return;
                     }
-                    setScreen(section);
+                    go(section);
                 }}
             />
 
-            <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} container={root} onSelect={setScreen} />
+            <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} container={root} onSelect={go} />
 
             <Lightbox url={lightbox} onClose={() => setLightbox(null)} />
         </div>

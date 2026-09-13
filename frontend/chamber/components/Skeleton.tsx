@@ -7,6 +7,7 @@
 export function Skeleton({ className = '' }: { className?: string }) {
     return (
         <div
+            data-skeleton=""
             className={`animate-pulse rounded-lg bg-velvet-lifted/70 ${className}`}
             aria-hidden="true"
         />
