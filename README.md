@@ -114,12 +114,17 @@ frontend/
       auth.js           the password step
       chamber.js        the whole seam between vanilla and React
     css/style.css       the game's styling
-  chamber/              React + TypeScript + Tailwind
-    app/                shell and the entrance
-    features/chat/      conversations, messages, composer
-    features/memories/  photos
+  chamber/              React + TypeScript + Tailwind + shadcn/ui
+    app/                shell, entrance, bottom bar, More sheet
+      navigation.ts     pure: screens, their bar section, slide direction
+      ScreenStage.tsx   slides and fades between screens
+      prefetch.ts       loads every screen's data on entry
+    components/ui/      shadcn/ui components, themed to the chamber
+    lib/utils.ts        cn(): merges Tailwind classes
+    presence/           pure: when to say "is here" and "left"
+    features/           chat, memories, today, letters, story, bucket
     stores/             Zustand: auth, chat, presence
-    hooks/              TanStack Query: conversations, messages, memories
+    hooks/              TanStack Query: every screen's data
     socket/             the realtime client and the protocol names
     utils/time.ts       day labels and clock times
 
