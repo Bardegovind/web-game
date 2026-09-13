@@ -32,6 +32,8 @@ function createChamberSession({ port, mongoUri, jwtSecret }) {
         CLOUDINARY_CLOUD_NAME: 'unused',
         CLOUDINARY_API_KEY: 'unused',
         CLOUDINARY_API_SECRET: 'unused',
+        // Set, so dotenv cannot supply one from backend/.env; empty means no Redis.
+        REDIS_URL: '',
     };
 
     async function resetDatabase() {
