@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, Check, CheckCheck, CornerUpLeft, Smile } from 'lucide-react';
 
 import type { Message } from '../../types';
 import { formatTime } from '../../utils/time';
 import { toggleReaction } from '../../socket/socketClient';
+import { useAuthStore } from '../../stores/authStore';
+import { burstHearts } from '../../app/heartBurst';
 
 /** The same short row the server accepts. Anything else is refused there. */
 const REACTIONS = ['❤️', '😂', '😭', '😘', '🥹', '🔥'];
@@ -28,6 +30,8 @@ export function MessageBubble({
     onOpenImage: (url: string) => void;
     onReply: (message: Message) => void;
 }) {
+    const me = useAuthStore((s) => s.username);
+    const bubbleRef = useRef<HTMLDivElement>(null);
     const [showActions, setShowActions] = useState(false);
     const isImage = message.type === 'image' && message.fileUrl;
     const reactions = message.reactions ?? [];
@@ -42,11 +46,10 @@ export function MessageBubble({
         >
             <div className={`relative max-w-[78%] sm:max-w-[62%] ${reactions.length > 0 ? 'mb-3' : ''}`}>
                 <div
+                    ref={bubbleRef}
                     className={[
                         'px-3.5 py-2.5 rounded-[var(--radius-bubble)]',
-                        isMine
-                            ? 'bg-lamp text-ink rounded-br-sm'
-                            : 'bg-velvet-lifted text-chalk rounded-bl-sm',
+                        isMine ? 'bubble-mine rounded-br-sm' : 'bubble-theirs rounded-bl-sm',
                         message.pending ? 'opacity-60' : '',
                         isImage ? 'p-1.5' : '',
                     ].join(' ')}
@@ -57,7 +60,7 @@ export function MessageBubble({
                         <div
                             className={`mb-1.5 rounded-lg border-l-2 px-2 py-1 text-[0.78rem] ${
                                 isMine
-                                    ? 'border-ink/40 bg-ink/10 text-ink/70'
+                                    ? 'border-white/60 bg-white/15 text-white/85'
                                     : 'border-lamp-dim bg-ink/40 text-dust'
                             }`}
                         >
@@ -89,7 +92,7 @@ export function MessageBubble({
 
                     <div
                         className={`mt-1 flex items-center gap-1 text-[0.66rem] ${
-                            isMine ? 'justify-end text-ink/55' : 'text-dust'
+                            isMine ? 'justify-end text-white/70' : 'text-dust'
                         } ${isImage ? 'px-2 pb-1' : ''}`}
                     >
                         {message.failed && <AlertCircle size={11} aria-hidden="true" />}
@@ -107,7 +110,7 @@ export function MessageBubble({
 
                 {reactions.length > 0 && (
                     <div
-                        className={`absolute -bottom-2.5 flex gap-0.5 rounded-full border border-hairline bg-velvet px-1.5 py-0.5 text-[0.7rem] ${
+                        className={`absolute -bottom-2.5 flex gap-0.5 rounded-full border border-hairline bg-velvet/80 px-1.5 py-0.5 text-[0.7rem] shadow-[0_2px_10px_rgba(0,0,0,0.3)] backdrop-blur-md ${
                             isMine ? 'right-2' : 'left-2'
                         }`}
                     >
@@ -150,7 +153,7 @@ export function MessageBubble({
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.92 }}
                             transition={{ duration: 0.12 }}
-                            className={`absolute -top-9 z-10 flex gap-1 rounded-full border border-hairline bg-velvet px-2 py-1 shadow-xl ${
+                            className={`glass-solid absolute -top-9 z-10 flex gap-1 rounded-full px-2 py-1 ${
                                 isMine ? 'right-0' : 'left-0'
                             }`}
                         >
@@ -159,8 +162,13 @@ export function MessageBubble({
                                     key={emoji}
                                     type="button"
                                     onClick={() => {
+                                        // A heart given, not taken back, earns a burst.
+                                        const givingHeart =
+                                            emoji === REACTIONS[0] &&
+                                            !reactions.some((r) => r.emoji === emoji && r.username === me);
                                         toggleReaction(message._id, emoji);
                                         setShowActions(false);
+                                        if (givingHeart) burstHearts(bubbleRef.current);
                                     }}
                                     className="rounded-full px-1 text-base transition-transform hover:scale-125"
                                 >

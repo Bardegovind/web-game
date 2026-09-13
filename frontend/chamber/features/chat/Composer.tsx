@@ -2,6 +2,9 @@ import { useRef, useState } from 'react';
 import { Image as ImageIcon, Send, Smile } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
+import { burstHearts } from '../../app/heartBurst';
+import { HeartGlyph } from '../../app/LoveBackdrop';
+
 const EMOJI = [
     '😊', '😂', '🔥', '❤️', '👍', '🙏', '💯', '✨',
     '😎', '🎉', '😢', '😍', '🤔', '🙌', '🚀', '⭐',
@@ -22,6 +25,7 @@ export function Composer({
     const [text, setText] = useState('');
     const [showEmoji, setShowEmoji] = useState(false);
     const fileInput = useRef<HTMLInputElement>(null);
+    const sendButton = useRef<HTMLButtonElement>(null);
     const stopTimer = useRef<number | undefined>(undefined);
 
     function submit() {
@@ -32,6 +36,9 @@ export function Composer({
         setText('');
         onTyping(false);
         window.clearTimeout(stopTimer.current);
+
+        // Only once the message is already on its way.
+        burstHearts(sendButton.current);
     }
 
     function handleChange(value: string) {
@@ -45,7 +52,7 @@ export function Composer({
     }
 
     return (
-        <div className="relative border-t border-hairline bg-ink/80 px-3 py-3 backdrop-blur">
+        <div className="relative px-3 pt-2 pb-3">
             <AnimatePresence>
                 {showEmoji && (
                     <motion.div
@@ -53,7 +60,7 @@ export function Composer({
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 8 }}
                         transition={{ duration: 0.15 }}
-                        className="absolute bottom-full left-3 mb-2 grid w-64 grid-cols-8 gap-1 rounded-2xl border border-hairline bg-velvet p-2 shadow-2xl"
+                        className="glass-solid absolute bottom-full left-3 mb-1 grid w-64 grid-cols-8 gap-1 rounded-2xl p-2"
                     >
                         {EMOJI.map((emoji) => (
                             <button
@@ -63,7 +70,7 @@ export function Composer({
                                     setText((t) => t + emoji);
                                     setShowEmoji(false);
                                 }}
-                                className="rounded-lg p-1 text-lg transition-colors hover:bg-velvet-lifted"
+                                className="rounded-lg p-1 text-lg transition-colors hover:bg-white/[0.07]"
                             >
                                 {emoji}
                             </button>
@@ -72,12 +79,12 @@ export function Composer({
                 )}
             </AnimatePresence>
 
-            <div className="flex items-end gap-2">
+            <div className="glass flex items-end gap-1 p-1.5">
                 <button
                     type="button"
                     aria-label="Emoji"
                     onClick={() => setShowEmoji((v) => !v)}
-                    className="rounded-full p-2 text-dust transition-colors hover:text-lamp"
+                    className="rounded-full p-2.5 text-dust transition-colors hover:text-lamp"
                 >
                     <Smile size={20} />
                 </button>
@@ -86,7 +93,7 @@ export function Composer({
                     type="button"
                     aria-label="Send a photo"
                     onClick={() => fileInput.current?.click()}
-                    className="rounded-full p-2 text-dust transition-colors hover:text-lamp"
+                    className="rounded-full p-2.5 text-dust transition-colors hover:text-lamp"
                 >
                     <ImageIcon size={20} />
                 </button>
@@ -114,17 +121,19 @@ export function Composer({
                         }
                     }}
                     placeholder="Say something"
-                    className="chamber-scroll max-h-28 flex-1 resize-none rounded-2xl border border-hairline bg-velvet px-4 py-2.5 text-[0.95rem] text-chalk placeholder:text-dust/70 focus:border-lamp-dim focus:outline-none"
+                    className="field chamber-scroll max-h-28 min-w-0 flex-1 resize-none rounded-2xl px-4 py-2 text-[0.95rem] leading-6"
                 />
 
                 <button
+                    ref={sendButton}
                     type="button"
                     onClick={submit}
                     disabled={!text.trim() || disabled}
                     aria-label="Send"
-                    className="rounded-full bg-lamp p-2.5 text-ink transition-opacity disabled:opacity-30"
+                    className="btn-love relative ml-0.5 flex size-10 shrink-0 items-center justify-center rounded-xl disabled:opacity-40"
                 >
-                    <Send size={18} />
+                    <Send size={17} className="-ml-0.5" />
+                    <HeartGlyph size={7} className="absolute top-1.5 right-1.5 text-white/85" />
                 </button>
             </div>
         </div>

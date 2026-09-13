@@ -4,7 +4,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 
 import { Entrance } from './Entrance';
-import { CursorGlow, LoveBackdrop } from './LoveBackdrop';
+import { CursorGlow, HeartGlyph, LoveBackdrop } from './LoveBackdrop';
+import { HeartBurstLayer } from './heartBurst';
 import { ConnectionBanner } from '../components/ConnectionBanner';
 import { ConversationList } from '../features/chat/ConversationList';
 import { Conversation } from '../features/chat/Conversation';
@@ -183,6 +184,7 @@ export function App() {
 
             <ConnectionBanner />
             <Toaster />
+            <HeartBurstLayer />
 
             <header className="flex items-center justify-between px-4 pt-4 pb-2">
                 <div>
@@ -214,11 +216,11 @@ export function App() {
                 {screen === 'list' && <Bucket />}
 
                 {screen === 'chat' && (
-                    <div className="flex h-full min-h-0">
+                    <div className="flex h-full min-h-0 md:gap-3 md:px-4 md:pt-1 md:pb-4">
                         {/* Mobile shows one at a time; a squeezed three-pane
                             layout on a phone helps no one. */}
                         <div
-                            className={`min-h-0 w-full shrink-0 flex-col md:flex md:w-80 md:border-r md:border-hairline ${
+                            className={`chat-pane min-h-0 w-full shrink-0 flex-col md:flex md:w-80 ${
                                 activePeer ? 'hidden md:flex' : 'flex'
                             }`}
                         >
@@ -232,7 +234,7 @@ export function App() {
                             />
                         </div>
 
-                        <div className={`min-h-0 min-w-0 flex-1 ${activePeer ? 'block' : 'hidden md:block'}`}>
+                        <div className={`chat-pane min-h-0 min-w-0 flex-1 ${activePeer ? 'block' : 'hidden md:block'}`}>
                             {activePeer ? (
                                 <Conversation
                                     peer={activePeer}
@@ -242,7 +244,8 @@ export function App() {
                                     onOpenImage={setLightbox}
                                 />
                             ) : (
-                                <div className="flex h-full items-center justify-center px-6 text-center">
+                                <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
+                                    <HeartGlyph size={22} className="text-lamp/50" />
                                     <p className="text-sm text-dust">Pick a conversation.</p>
                                 </div>
                             )}

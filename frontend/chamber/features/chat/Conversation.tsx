@@ -188,7 +188,7 @@ export function Conversation({
 
     return (
         <section className="flex h-full min-h-0 flex-col">
-            <header className="flex items-center gap-3 border-b border-hairline px-3 py-3">
+            <header className="flex items-center gap-3 border-b border-hairline px-4 py-3">
                 <button
                     type="button"
                     onClick={onBack}
@@ -198,7 +198,7 @@ export function Conversation({
                     <ChevronLeft size={20} />
                 </button>
                 <div className="min-w-0">
-                    <h2 className="font-display text-lg leading-tight text-chalk">{peer}</h2>
+                    <h2 className="font-display text-lg leading-tight font-semibold text-chalk">{peer}</h2>
                     <p className={`text-xs ${isTyping ? 'text-lamp' : 'text-dust'}`}>{status}</p>
                 </div>
             </header>
@@ -221,7 +221,7 @@ export function Conversation({
                         Nothing here yet. Say the first thing.
                     </p>
                 ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                         {withSeparators.map((row, i) =>
                             row.kind === 'day' ? (
                                 <DaySeparator key={`day-${i}`} label={row.label} />
@@ -258,9 +258,9 @@ export function Conversation({
             </div>
 
             {replyingTo && (
-                <div className="flex items-start gap-2 border-t border-hairline bg-velvet/60 px-4 py-2">
+                <div className="glass mx-3 mt-1 flex items-start gap-2 rounded-2xl px-3 py-2">
                     <div className="min-w-0 flex-1 border-l-2 border-lamp-dim pl-2">
-                        <p className="text-[0.7rem] text-lamp">Replying to {replyingTo.sender}</p>
+                        <p className="font-display text-[0.72rem] font-medium text-lamp">Replying to {replyingTo.sender}</p>
                         <p className="truncate text-xs text-dust">
                             {replyingTo.type === 'image' ? 'Photo' : replyingTo.text}
                         </p>

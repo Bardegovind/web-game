@@ -6,11 +6,9 @@
 export function DaySeparator({ label }: { label: string }) {
     return (
         <div className="my-5 flex items-center gap-3" role="separator" aria-label={label}>
-            <span className="h-px flex-1 bg-hairline" />
-            <span className="font-display text-[0.7rem] tracking-wide text-dust italic">
-                {label}
-            </span>
-            <span className="h-px flex-1 bg-hairline" />
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-lamp/35" />
+            <span className="font-display text-[0.72rem] font-medium text-dust">{label}</span>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-violet/35" />
         </div>
     );
 }
