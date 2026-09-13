@@ -106,6 +106,18 @@
                         machine.state = 'UNLOCKED';
                         return { unlocked: true, timedOut: timedOut || undefined };
                     }
+
+                    // The boundary between corners, reported on its own so it can
+                    // be made to feel different. Sixteen identical buzzes cannot be
+                    // counted by feel, and landing one short or one over sends her
+                    // back to the start — after which the next corner does nothing
+                    // and says nothing, which reads as that corner being broken.
+                    return {
+                        unlocked: false,
+                        progressed: true,
+                        stepCompleted: true,
+                        timedOut: timedOut || undefined,
+                    };
                 }
 
                 return { unlocked: false, progressed: true, timedOut: timedOut || undefined };

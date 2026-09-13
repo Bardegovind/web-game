@@ -27,6 +27,21 @@
 
     const ZONE_SELECTOR = '[data-tap]';
 
+    /**
+     * What each moment feels like.
+     *
+     * The tick is unchanged — it was already reported as felt on a real phone.
+     * The other two exist because the tick alone could not tell her when to
+     * stop: sixteen identical buzzes are not countable by feel, and one too
+     * many or one too few silently sent her back to the start. Now she taps
+     * until she feels two pulses, and moves on.
+     */
+    const HAPTICS = {
+        TICK: 8,
+        STEP_DONE: [40, 60, 40],
+        UNLOCKED: [70, 50, 110],
+    };
+
     function createTapZones(options) {
         const opts = options || {};
         // Set haptics: false to turn the confirmation tick off entirely.
@@ -39,22 +54,18 @@
         let bindings = [];
 
         /**
-         * A tap that counted gives the faintest possible tick back.
+         * Silent, invisible feedback, felt only by the hand holding the phone.
          *
-         * Silent, invisible, and felt only by the hand holding the phone — but
-         * it removes the guesswork entirely. Without it a tap that missed the
-         * corner is indistinguishable from one that landed, which is how
-         * sixteen taps turns into eighteen.
-         *
-         * Only accepted taps tick. A near-miss stays silent, so the count in
-         * her hand is always the count the machine has.
+         * Only accepted taps are felt. A near-miss, or a corner tapped out of
+         * order, stays silent — so nothing a stranger does by accident feels
+         * like anything, and the count in her hand is the count the machine has.
          */
-        function confirmTap() {
+        function feel(pattern) {
             if (!opts.haptics) return;
             if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
 
             try {
-                navigator.vibrate(8);
+                navigator.vibrate(pattern);
             } catch (error) {
                 // Unsupported or blocked. The sequence works regardless.
             }
@@ -68,7 +79,11 @@
 
                 const result = sequence.tap(zoneId, clock());
 
-                if (result.progressed || result.unlocked) confirmTap();
+                // Three things she can feel, and nothing else: an ordinary tap,
+                // the end of a corner, and the door opening.
+                if (result.unlocked) feel(HAPTICS.UNLOCKED);
+                else if (result.stepCompleted) feel(HAPTICS.STEP_DONE);
+                else if (result.progressed) feel(HAPTICS.TICK);
 
                 if (result.unlocked) {
                     disarm();
@@ -119,5 +134,5 @@
         };
     }
 
-    return { createTapZones: createTapZones };
+    return { createTapZones: createTapZones, HAPTICS: HAPTICS };
 });

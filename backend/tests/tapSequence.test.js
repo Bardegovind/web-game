@@ -205,3 +205,71 @@ test('a pause shorter than the timeout keeps the run alive', () => {
 
     assert.equal(result.unlocked, true, 'a 7s pause must not cost her the run');
 });
+
+/**
+ * Why the step boundary has to be reported.
+ *
+ * On a real phone every counted tap buzzes identically, so reaching exactly
+ * sixteen relies on counting buzzes by feel. Land on fifteen or seventeen and
+ * the machine is back at the start: the other two corners then do nothing and
+ * say nothing, which reads as "those corners are broken". The sixteenth tap
+ * must be distinguishable so she knows to move on without counting at all.
+ */
+test('the sixteenth tap on the first corner reports the step as complete', () => {
+    const seq = createTapSequence();
+    const clock = newClock();
+
+    tapMany(seq, ZONE_1, 15, clock);
+    clock.now += 100;
+    const sixteenth = seq.tap(ZONE_1, clock.now);
+
+    assert.equal(sixteenth.stepCompleted, true, 'the sixteenth tap must say "move on"');
+    assert.equal(sixteenth.unlocked, false);
+});
+
+test('taps before the sixteenth do not report a completed step', () => {
+    const seq = createTapSequence();
+    const clock = newClock();
+
+    for (let i = 1; i <= 15; i++) {
+        clock.now += 100;
+        const result = seq.tap(ZONE_1, clock.now);
+        assert.equal(result.stepCompleted, undefined, `tap ${i} must feel like an ordinary tap`);
+    }
+});
+
+test('the third tap on the second corner reports the step as complete', () => {
+    const seq = createTapSequence();
+    const clock = newClock();
+
+    tapMany(seq, ZONE_1, 16, clock);
+    const first = tapMany(seq, ZONE_2, 2, clock);
+    assert.equal(first.stepCompleted, undefined, 'two taps is not the end of the step');
+
+    clock.now += 100;
+    const third = seq.tap(ZONE_2, clock.now);
+    assert.equal(third.stepCompleted, true);
+});
+
+test('the final tap unlocks instead of reporting a step', () => {
+    const seq = createTapSequence();
+    const clock = newClock();
+
+    tapMany(seq, ZONE_1, 16, clock);
+    tapMany(seq, ZONE_2, 3, clock);
+    const last = tapMany(seq, ZONE_3, 7, clock);
+
+    assert.equal(last.unlocked, true);
+    assert.equal(last.stepCompleted, undefined, 'unlocking is its own signal, not a step boundary');
+});
+
+test('a completed step still counts as progress', () => {
+    const seq = createTapSequence();
+    const clock = newClock();
+
+    tapMany(seq, ZONE_1, 15, clock);
+    clock.now += 100;
+    const sixteenth = seq.tap(ZONE_1, clock.now);
+
+    assert.equal(sixteenth.progressed, true, 'existing callers that only check progressed keep working');
+});
