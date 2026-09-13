@@ -2,6 +2,7 @@ import { useStory } from '../../hooks/useChamber';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
 import { formatDayLabel } from '../../utils/time';
+import { HeartGlyph } from '../../app/LoveBackdrop';
 
 /**
  * The timeline.
@@ -15,9 +16,9 @@ export function Story() {
     if (isLoading) {
         return (
             <div className="space-y-4 p-4">
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
-                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-20 w-full rounded-[20px]" />
+                <Skeleton className="h-20 w-full rounded-[20px]" />
+                <Skeleton className="h-20 w-full rounded-[20px]" />
             </div>
         );
     }
@@ -29,7 +30,7 @@ export function Story() {
     if (entries.length === 0) {
         return (
             <div className="px-6 py-16 text-center">
-                <p className="font-display text-lg text-chalk">Nothing written down yet</p>
+                <p className="font-display text-lg font-semibold text-chalk">Nothing written down yet</p>
                 <p className="mt-1 text-sm text-dust">The moments worth keeping go here.</p>
             </div>
         );
@@ -37,38 +38,42 @@ export function Story() {
 
     return (
         <div className="chamber-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 pb-24">
-            <ol className="relative py-6 pl-6">
+            <ol className="relative py-6 pl-8">
                 {/* The thread the moments hang from. */}
                 <span
                     aria-hidden="true"
-                    className="absolute top-0 bottom-0 left-[7px] w-px bg-gradient-to-b from-transparent via-hairline to-transparent"
+                    className="absolute top-0 bottom-0 left-[10px] w-px bg-gradient-to-b from-transparent via-lamp/35 to-transparent"
                 />
 
                 {entries.map((entry) => (
-                    <li key={entry._id} className="relative mb-8 last:mb-0">
+                    <li key={entry._id} className="relative mb-4 last:mb-0">
                         <span
                             aria-hidden="true"
-                            className="absolute top-2 -left-6 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-lamp-dim bg-ink text-[0.6rem]"
+                            className="absolute top-5 -left-8 flex h-[21px] w-[21px] items-center justify-center rounded-full border border-lamp/60 bg-ink text-[0.65rem] shadow-[0_0_14px_rgba(255,107,157,0.4)]"
                         >
-                            {entry.emoji || ''}
+                            {entry.emoji || <HeartGlyph size={8} className="text-lamp" />}
                         </span>
 
-                        <p className="font-display text-xs text-dust italic">
-                            {formatDayLabel(entry.happenedAt)}
-                            {entry.place && ` · ${entry.place}`}
-                        </p>
-                        <h3 className="mt-1 font-display text-[1.15rem] text-chalk">{entry.title}</h3>
-                        {entry.note && (
-                            <p className="mt-1 text-sm leading-relaxed text-dust">{entry.note}</p>
-                        )}
-                        {entry.imageUrl && (
-                            <img
-                                src={entry.imageUrl}
-                                alt=""
-                                loading="lazy"
-                                className="mt-3 max-h-64 w-full rounded-xl object-cover"
-                            />
-                        )}
+                        <div className="glass glass-hover p-4">
+                            <h3 className="font-display text-[1.1rem] leading-snug font-semibold text-chalk">
+                                {entry.title}
+                            </h3>
+                            <p className="mt-0.5 text-xs text-dust">
+                                {formatDayLabel(entry.happenedAt)}
+                                {entry.place && ` · ${entry.place}`}
+                            </p>
+                            {entry.note && (
+                                <p className="mt-2 text-sm leading-relaxed text-chalk/80">{entry.note}</p>
+                            )}
+                            {entry.imageUrl && (
+                                <img
+                                    src={entry.imageUrl}
+                                    alt=""
+                                    loading="lazy"
+                                    className="mt-3 max-h-64 w-full rounded-2xl object-cover"
+                                />
+                            )}
+                        </div>
                     </li>
                 ))}
             </ol>

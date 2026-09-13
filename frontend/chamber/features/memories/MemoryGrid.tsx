@@ -39,7 +39,7 @@ function Photo({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.25 }}
-            className="group relative aspect-square overflow-hidden rounded-xl bg-velvet"
+            className="group relative aspect-square overflow-hidden rounded-[20px] border border-hairline bg-velvet transition-[border-color,box-shadow] duration-300 hover:border-lamp/35 hover:shadow-[0_0_28px_rgba(255,107,157,0.22)]"
         >
             {failed ? (
                 // A photo that will not load shows a quiet placeholder rather
@@ -63,7 +63,7 @@ function Photo({
                 type="button"
                 aria-label="Remove this photo"
                 onClick={() => onDelete(memory._id)}
-                className="absolute top-2 right-2 rounded-full bg-ink/70 p-1.5 text-dust opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                className="absolute top-2 right-2 rounded-full border border-hairline bg-ink/60 p-1.5 text-chalk/80 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             >
                 <Trash2 size={14} />
             </button>
@@ -135,7 +135,7 @@ export function MemoryGrid({
         return (
             <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                    <Skeleton key={i} className="aspect-square" />
+                    <Skeleton key={i} className="aspect-square rounded-[20px]" />
                 ))}
             </div>
         );
@@ -152,13 +152,13 @@ export function MemoryGrid({
             <div className="chamber-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-3 pb-24">
                 {memories.length === 0 ? (
                     <div className="px-6 py-16 text-center">
-                        <p className="font-display text-lg text-chalk">Nothing kept here yet</p>
+                        <p className="font-display text-lg font-semibold text-chalk">Nothing kept here yet</p>
                         <p className="mt-1 text-sm text-dust">Add the first photo.</p>
                     </div>
                 ) : (
                     byDay(memories).map(([label, group]) => (
                         <section key={label} className="mb-6">
-                            <h3 className="mb-2 px-1 font-display text-sm text-dust italic">{label}</h3>
+                            <h3 className="mb-2.5 px-1 pt-1 font-display text-sm font-semibold text-dust">{label}</h3>
                             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                                 {group.map((memory) => (
                                     <Photo
@@ -196,7 +196,7 @@ export function MemoryGrid({
                 whileTap={{ scale: 0.95 }}
                 onClick={() => fileInput.current?.click()}
                 disabled={upload.isPending}
-                className="absolute right-4 bottom-4 flex items-center gap-2 rounded-full bg-lamp px-5 py-3 text-sm font-medium text-ink shadow-lg shadow-ink/50 disabled:opacity-60"
+                className="btn-love absolute right-4 bottom-4 flex items-center gap-2 rounded-full px-5 py-3 text-sm disabled:opacity-60"
             >
                 <Plus size={17} />
                 Add photo
@@ -241,7 +241,7 @@ export function MemoryGrid({
                             maxLength={300}
                             rows={3}
                             autoFocus
-                            className="w-full resize-none rounded-2xl border border-border bg-background/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:ring-1 focus:ring-primary focus:outline-none"
+                            className="field w-full resize-none rounded-2xl px-3.5 py-2.5 text-sm"
                         />
                         <p className="mt-1 text-right text-xs text-muted-foreground">{caption.length}/300</p>
                     </div>
@@ -257,7 +257,7 @@ export function MemoryGrid({
                             type="button"
                             onClick={resetSelection}
                             disabled={upload.isPending}
-                            className="flex-1 rounded-full border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
+                            className="btn-soft flex-1 rounded-full px-4 py-2.5 text-sm disabled:opacity-60"
                         >
                             Cancel
                         </button>
@@ -265,7 +265,7 @@ export function MemoryGrid({
                             type="button"
                             onClick={handleAddPhoto}
                             disabled={upload.isPending}
-                            className="flex-1 rounded-full bg-lamp px-4 py-2.5 text-sm font-medium text-ink shadow-lg shadow-ink/40 disabled:opacity-60"
+                            className="btn-love flex-1 rounded-full px-4 py-2.5 text-sm disabled:opacity-60"
                         >
                             {upload.isPending ? 'Adding…' : 'Add photo'}
                         </button>

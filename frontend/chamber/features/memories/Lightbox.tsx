@@ -30,13 +30,13 @@ export function Lightbox({ url, onClose }: { url: string | null; onClose: () => 
                     role="dialog"
                     aria-modal="true"
                     aria-label="Photo"
-                    className="fixed inset-0 z-50 flex items-center justify-center bg-ink/95 p-4 backdrop-blur-sm"
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,6,16,0.9)] p-4 backdrop-blur-md"
                 >
                     <button
                         type="button"
                         onClick={onClose}
                         aria-label="Close"
-                        className="absolute top-4 right-4 rounded-full p-2 text-dust transition-colors hover:text-chalk"
+                        className="glass absolute top-4 right-4 rounded-full p-2 text-chalk/80 transition-colors hover:text-chalk"
                     >
                         <X size={22} />
                     </button>
@@ -47,7 +47,7 @@ export function Lightbox({ url, onClose }: { url: string | null; onClose: () => 
                         src={url}
                         alt=""
                         onClick={(e) => e.stopPropagation()}
-                        className="max-h-full max-w-full rounded-xl object-contain"
+                        className="max-h-full max-w-full rounded-[20px] object-contain shadow-[0_0_60px_rgba(255,60,131,0.18)]"
                     />
                 </motion.div>
             )}

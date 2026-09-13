@@ -2,16 +2,11 @@
  * Placeholder shapes while something loads.
  *
  * She should never see a spinner or an empty rectangle that might be a
- * failure — the shape of what is coming is itself reassurance.
+ * failure — the shape of what is coming is itself reassurance. A slow shimmer
+ * runs across it, and holds still with reduced motion.
  */
 export function Skeleton({ className = '' }: { className?: string }) {
-    return (
-        <div
-            data-skeleton=""
-            className={`animate-pulse rounded-lg bg-velvet-lifted/70 ${className}`}
-            aria-hidden="true"
-        />
-    );
+    return <div data-skeleton="" className={`chamber-shimmer rounded-2xl ${className}`} aria-hidden="true" />;
 }
 
 export function MessageSkeleton() {

@@ -7,6 +7,7 @@ import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
 import { formatDayLabel } from '../../utils/time';
 import type { Letter } from '../../types';
+import { HeartGlyph } from '../../app/LoveBackdrop';
 
 /**
  * "Open when..." letters.
@@ -23,8 +24,8 @@ export function Letters() {
     if (isLoading) {
         return (
             <div className="space-y-3 p-4">
-                <Skeleton className="h-20 w-full" />
-                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-[4.5rem] w-full rounded-[20px]" />
+                <Skeleton className="h-[4.5rem] w-full rounded-[20px]" />
             </div>
         );
     }
@@ -46,7 +47,7 @@ export function Letters() {
         <div className="chamber-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 pb-24">
             {letters.length === 0 ? (
                 <div className="px-6 py-16 text-center">
-                    <p className="font-display text-lg text-chalk">No letters yet</p>
+                    <p className="font-display text-lg font-semibold text-chalk">No letters yet</p>
                     <p className="mt-1 text-sm text-dust">
                         Ones written for you will wait here until you need them.
                     </p>
@@ -59,17 +60,21 @@ export function Letters() {
                                 type="button"
                                 whileTap={{ scale: 0.99 }}
                                 onClick={() => read(letter)}
-                                className={`flex w-full items-center gap-4 rounded-2xl border px-4 py-4 text-left transition-colors ${
-                                    letter.isOpened
-                                        ? 'border-hairline text-dust hover:border-dust/40'
-                                        : 'border-lamp-dim/50 bg-lamp/5 text-chalk hover:bg-lamp/10'
+                                className={`glass glass-hover flex w-full items-center gap-4 px-4 py-4 text-left ${
+                                    letter.isOpened ? 'text-dust' : 'border-lamp/30 bg-lamp/[0.06] text-chalk'
                                 }`}
                             >
-                                <span className={letter.isOpened ? 'text-dust' : 'text-lamp'}>
-                                    {letter.isOpened ? <MailOpen size={20} /> : <Mail size={20} />}
+                                <span
+                                    className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
+                                        letter.isOpened
+                                            ? 'bg-white/[0.05] text-dust'
+                                            : 'love-fill shadow-[0_4px_16px_rgba(255,60,131,0.3)]'
+                                    }`}
+                                >
+                                    {letter.isOpened ? <MailOpen size={18} /> : <Mail size={18} />}
                                 </span>
                                 <span className="min-w-0 flex-1">
-                                    <span className="block font-display text-[1.05rem]">{letter.prompt}</span>
+                                    <span className="block font-display text-[1.05rem] font-semibold">{letter.prompt}</span>
                                     <span className="mt-0.5 block text-xs text-dust">
                                         {letter.isOpened
                                             ? `Opened ${formatDayLabel(letter.openedAt)}`
@@ -90,7 +95,7 @@ export function Letters() {
                         exit={{ opacity: 0 }}
                         role="dialog"
                         aria-modal="true"
-                        className="fixed inset-0 z-50 flex items-center justify-center bg-ink/95 p-5 backdrop-blur-sm"
+                        className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(10,6,16,0.9)] p-5 backdrop-blur-md"
                         onClick={() => setReading(null)}
                     >
                         <motion.article
@@ -98,19 +103,22 @@ export function Letters() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="relative max-h-[80vh] w-full max-w-md overflow-y-auto rounded-3xl border border-hairline bg-velvet p-7"
+                            className="glass-solid relative max-h-[80vh] w-full max-w-md overflow-y-auto rounded-3xl p-7"
                         >
                             <button
                                 type="button"
                                 onClick={() => setReading(null)}
                                 aria-label="Close"
-                                className="absolute top-4 right-4 text-dust transition-colors hover:text-chalk"
+                                className="absolute top-4 right-4 rounded-full p-1 text-dust transition-colors hover:text-chalk"
                             >
                                 <X size={18} />
                             </button>
 
-                            <p className="font-display text-sm text-lamp italic">{reading.prompt}</p>
-                            <span className="my-4 block h-px w-10 bg-lamp-dim" aria-hidden="true" />
+                            <p className="love-text pr-6 font-display text-lg leading-snug font-bold">{reading.prompt}</p>
+                            <span className="my-4 flex items-center gap-2" aria-hidden="true">
+                                <span className="love-fill-bright h-px w-10" />
+                                <HeartGlyph size={9} className="text-heart" />
+                            </span>
                             <p className="text-[0.98rem] leading-relaxed whitespace-pre-wrap text-chalk">
                                 {reading.body}
                             </p>

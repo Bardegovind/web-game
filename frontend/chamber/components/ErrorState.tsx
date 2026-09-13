@@ -20,7 +20,7 @@ export function ErrorState({
                 <button
                     type="button"
                     onClick={onRetry}
-                    className="inline-flex items-center gap-2 rounded-full border border-hairline px-4 py-2 text-sm text-chalk transition-colors hover:border-lamp-dim hover:text-lamp"
+                    className="btn-soft inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm"
                 >
                     <RotateCw size={14} aria-hidden="true" />
                     Try again

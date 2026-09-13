@@ -16,8 +16,8 @@ export function Bucket() {
     if (isLoading) {
         return (
             <div className="space-y-2 p-4">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
             </div>
         );
     }
@@ -36,8 +36,8 @@ export function Bucket() {
 
     return (
         <div className="chamber-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 pb-24">
-            <div className="flex items-baseline justify-between py-4">
-                <h2 className="font-display text-lg text-chalk">Things to do</h2>
+            <div className="flex items-baseline justify-between pt-4 pb-4">
+                <h2 className="love-text font-display text-[1.65rem] leading-tight font-bold">Things to do</h2>
                 {items.length > 0 && (
                     <span className="text-xs text-dust">
                         {done} of {items.length}
@@ -51,14 +51,14 @@ export function Bucket() {
                     onChange={(e) => setText(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && submit()}
                     placeholder="Something we should do"
-                    className="flex-1 rounded-2xl border border-hairline bg-velvet px-4 py-2.5 text-sm text-chalk placeholder:text-dust/70 focus:border-lamp-dim focus:outline-none"
+                    className="field min-w-0 flex-1 rounded-xl px-4 py-2.5 text-sm"
                 />
                 <button
                     type="button"
                     onClick={submit}
                     disabled={!text.trim() || add.isPending}
                     aria-label="Add to the list"
-                    className="rounded-2xl bg-lamp px-4 text-ink transition-opacity disabled:opacity-30"
+                    className="btn-love flex items-center rounded-xl px-4 disabled:opacity-40"
                 >
                     <Plus size={18} />
                 </button>
@@ -69,25 +69,25 @@ export function Bucket() {
                     Nothing on the list yet. Add the first thing.
                 </p>
             ) : (
-                <ul className="space-y-1.5">
+                <ul className="space-y-2">
                     {items.map((item) => (
                         <li key={item._id}>
                             <motion.button
                                 type="button"
                                 whileTap={{ scale: 0.99 }}
                                 onClick={() => toggle.mutate(item._id)}
-                                className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-velvet"
+                                className="glass glass-hover flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left"
                             >
                                 <span
                                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
-                                        item.done ? 'border-lamp bg-lamp text-ink' : 'border-dust/50'
+                                        item.done ? 'love-fill border-transparent' : 'border-lamp-dim/60'
                                     }`}
                                 >
                                     {item.done && <Check size={13} strokeWidth={3} />}
                                 </span>
                                 <span
                                     className={`min-w-0 flex-1 text-[0.95rem] ${
-                                        item.done ? 'text-dust line-through' : 'text-chalk'
+                                        item.done ? 'text-dust line-through decoration-lamp/50' : 'text-chalk'
                                     }`}
                                 >
                                     {item.text}

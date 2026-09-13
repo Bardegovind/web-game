@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
 import { formatDayLabel } from '../../utils/time';
+import { HeartGlyph } from '../../app/LoveBackdrop';
 
 /**
  * What is waiting.
@@ -23,8 +24,8 @@ export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
     if (isLoading) {
         return (
             <div className="space-y-4 p-4">
-                <Skeleton className="h-24 w-full" />
-                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-44 w-full rounded-[20px]" />
             </div>
         );
     }
@@ -43,34 +44,32 @@ export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
 
     return (
         <div className="chamber-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 pb-24">
-            <section className="py-6">
+            <section className="pt-4 pb-6">
                 {waiting.length > 0 ? (
                     <>
-                        <p className="font-display text-xl leading-snug text-chalk">
+                        <p className="love-text font-display text-[1.65rem] leading-tight font-bold">
                             Something is waiting for you.
                         </p>
-                        <ul className="mt-3 space-y-1">
+                        <ul className="mt-3 space-y-1.5">
                             {waiting.map((line) => (
                                 <li key={line} className="flex items-center gap-2 text-sm text-dust">
-                                    <span aria-hidden="true" className="h-1 w-1 rounded-full bg-lamp" />
+                                    <HeartGlyph size={10} className="shrink-0 text-lamp" />
                                     {line}
                                 </li>
                             ))}
                         </ul>
                     </>
                 ) : (
-                    <p className="font-display text-xl leading-snug text-chalk">
+                    <p className="love-text font-display text-[1.65rem] leading-tight font-bold">
                         You are all caught up.
                     </p>
                 )}
             </section>
 
             {question && (
-                <section className="mb-6 rounded-3xl border border-hairline bg-velvet/60 p-5">
-                    <p className="font-display text-xs text-dust italic">Today&apos;s question</p>
-                    <p className="mt-2 font-display text-[1.15rem] leading-snug text-chalk">
-                        {question.text}
-                    </p>
+                <section className="glass mb-5 p-5">
+                    <h2 className="font-display text-base font-bold text-chalk">Today&apos;s question</h2>
+                    <p className="mt-2 text-[1.02rem] leading-relaxed text-chalk/90">{question.text}</p>
 
                     {myAnswer ? (
                         <div className="mt-4 space-y-3">
@@ -96,13 +95,13 @@ export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
                                     if (e.key === 'Enter' && draft.trim()) answer.mutate(draft.trim());
                                 }}
                                 placeholder="Your answer"
-                                className="flex-1 rounded-2xl border border-hairline bg-ink px-4 py-2.5 text-sm text-chalk placeholder:text-dust/70 focus:border-lamp-dim focus:outline-none"
+                                className="field min-w-0 flex-1 rounded-xl px-4 py-2.5 text-sm"
                             />
                             <button
                                 type="button"
                                 onClick={() => draft.trim() && answer.mutate(draft.trim())}
                                 disabled={!draft.trim() || answer.isPending}
-                                className="rounded-2xl bg-lamp px-4 py-2 text-sm text-ink transition-opacity disabled:opacity-30"
+                                className="btn-love rounded-xl px-5 py-2 text-sm disabled:opacity-40"
                             >
                                 Answer
                             </button>
@@ -116,9 +115,9 @@ export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="mb-6"
+                    className="glass glass-hover mb-6 p-3"
                 >
-                    <p className="mb-2 font-display text-xs text-dust italic">
+                    <p className="px-2 pt-1 pb-2.5 font-display text-sm font-semibold text-chalk">
                         From {formatDayLabel(data.memoryOfTheDay.createdAt)}
                     </p>
                     <button
@@ -133,7 +132,7 @@ export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
                             className="max-h-80 w-full object-cover"
                         />
                     </button>
-                    <p className="mt-2 text-sm text-dust">
+                    <p className="px-2 pt-2.5 pb-1 text-sm text-dust">
                         {data.memoryOfTheDay.caption || 'Remember this?'}
                     </p>
                 </motion.section>
