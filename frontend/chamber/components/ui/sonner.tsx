@@ -17,7 +17,9 @@ export function Toaster(props: ComponentProps<typeof Sonner>) {
             style={
                 {
                     fontFamily: 'var(--font-body)',
-                    '--normal-bg': 'rgba(26, 15, 31, 0.92)',
+                    // Nearly opaque: a toast sits over the header, and at 92%
+                    // its text still showed through.
+                    '--normal-bg': 'rgba(26, 15, 31, 0.97)',
                     '--normal-text': 'var(--color-chalk)',
                     '--normal-border': 'var(--color-hairline)',
                     '--border-radius': '1rem',
