@@ -202,7 +202,22 @@ export function MemoryGrid({
                 Add photo
             </motion.button>
 
-            <Sheet open={dialogOpen} onOpenChange={(open) => (open ? setDialogOpen(true) : resetSelection())}>
+            <Sheet
+                open={dialogOpen}
+                onOpenChange={(open) => {
+                    if (open) {
+                        setDialogOpen(true);
+                        return;
+                    }
+                    // Escape, an overlay click and the sheet's own X button all
+                    // arrive here too. While the upload is in flight, closing
+                    // would lose the result: a failure would set an error on an
+                    // already-closed sheet, and a success would happen where she
+                    // can no longer see it. The sheet stays open until it settles.
+                    if (upload.isPending) return;
+                    resetSelection();
+                }}
+            >
                 <SheetContent container={sheetContainer}>
                     <SheetTitle>Add a photo</SheetTitle>
                     <SheetDescription className="sr-only">

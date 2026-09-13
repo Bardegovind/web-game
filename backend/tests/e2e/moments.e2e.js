@@ -47,13 +47,17 @@ function withTimeout(promise, ms, message) {
  * Intercepts every upload attempt instead of letting it reach Cloudinary.
  * Records each request's raw multipart body and replies with `status`/`body`
  * (from the mutable `response` ref, so a test can flip it between subtests).
+ * When `hold.promise` is set, the reply waits for it to resolve first, so a
+ * test can hold a request open to check what happens while it is in flight.
  */
-async function interceptUploads(page, response) {
+async function interceptUploads(page, response, hold) {
     const requests = [];
 
     await page.route('**/api/gallery/upload', async (route) => {
         const body = route.request().postDataBuffer();
         requests.push(body ? body.toString('latin1') : '');
+
+        if (hold.promise) await hold.promise;
 
         await route.fulfill({
             status: response.status,
@@ -160,7 +164,8 @@ test('Moments: a visible add-photo button, with a description', { timeout: 120_0
     page.on('pageerror', (error) => pageErrors.push(error.message));
 
     const response = { status: 201, body: successBody('') };
-    const requests = await interceptUploads(page, response);
+    const hold = { promise: null };
+    const requests = await interceptUploads(page, response, hold);
 
     await withTimeout(openMoments(page), 20_000, 'opening Moments timed out');
 
@@ -228,6 +233,47 @@ test('Moments: a visible add-photo button, with a description', { timeout: 120_0
         await page.waitForTimeout(300);
         assert.ok(await sheet.isVisible(), 'the sheet should stay open after a failure');
         assert.equal(await sheet.locator('textarea[aria-label="Description"]').inputValue(), 'keep me');
+    });
+
+    await t.test('closing the sheet mid-upload does not lose the result', async () => {
+        let releaseUpload;
+        hold.promise = new Promise((resolve) => { releaseUpload = resolve; });
+        response.status = 500;
+        response.body = { success: false };
+
+        await chooseAPhoto(page);
+        const sheet = dialog(page);
+        await sheet.waitFor({ state: 'visible', timeout: 8000 });
+        await sheet.locator('textarea[aria-label="Description"]').fill('still here');
+
+        await sheet.getByRole('button', { name: 'Add photo' }).click();
+        // The request is held open server-side; give the click a moment to
+        // actually start the mutation before trying to dismiss the sheet.
+        await page.waitForTimeout(300);
+
+        // 500ms comfortably clears the sheet's own 200ms exit animation, so a
+        // close that the guard failed to stop has fully unmounted the dialog
+        // by the time we check — not just started sliding away.
+        await page.keyboard.press('Escape');
+        await page.waitForTimeout(500);
+        assert.ok(await sheet.isVisible(), 'Escape should not close the sheet while the upload is in flight');
+
+        // The overlay covers everywhere outside the sheet's own bottom panel;
+        // a point near the top of the viewport is reliably clear of it.
+        await page.mouse.click(10, 10);
+        await page.waitForTimeout(500);
+        assert.ok(await sheet.isVisible(), 'an overlay click should not close the sheet while the upload is in flight');
+
+        releaseUpload();
+        hold.promise = null;
+
+        const alert = sheet.locator('[role="alert"]', { hasText: "Couldn't add this photo. Try again." });
+        await alert.waitFor({ timeout: 8000 });
+        assert.equal(
+            await sheet.locator('textarea[aria-label="Description"]').inputValue(),
+            'still here',
+            'the description typed before the failed upload should survive'
+        );
     });
 
     await context.close();
