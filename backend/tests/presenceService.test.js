@@ -104,3 +104,46 @@ test('presence changes are broadcast', async () => {
     assert.equal(update.payload.username, 'her');
     assert.equal(update.payload.isOnline, true);
 });
+
+/**
+ * Nothing ever clears `isOnline` on boot. If the process stops while someone
+ * is connected — a restart, a crash, a deploy — `disconnected` never runs, and
+ * that person is stored online forever.
+ */
+test('reconcileStoredPresence clears a stale online flag when no socket is live', async () => {
+    const io = fakeIo({}); // nobody has a live socket anywhere
+    const ChamberUser = fakeChamberUser();
+    ChamberUser.rows.push({ username: 'radhe', isOnline: true });
+    const presence = createPresenceService({ io, ChamberUser });
+
+    const cleared = await presence.reconcileStoredPresence();
+
+    assert.equal(cleared, 1);
+    const row = ChamberUser.rows.find((r) => r.username === 'radhe');
+    assert.equal(row.isOnline, false, 'a user with no live socket must not stay stored online');
+    assert.ok(row.lastSeen instanceof Date, 'lastSeen should be stamped when a stale flag is cleared');
+});
+
+test('reconcileStoredPresence leaves a user online who still has a live socket', async () => {
+    const io = fakeIo({ [roomFor('govind')]: [{ id: 's1' }] });
+    const ChamberUser = fakeChamberUser();
+    ChamberUser.rows.push({ username: 'govind', isOnline: true });
+    const presence = createPresenceService({ io, ChamberUser });
+
+    const cleared = await presence.reconcileStoredPresence();
+
+    assert.equal(cleared, 0, 'a genuinely live user must not be counted as cleared');
+    const row = ChamberUser.rows.find((r) => r.username === 'govind');
+    assert.equal(row.isOnline, true);
+});
+
+test('reconcileStoredPresence is a no-op when nobody is stored online', async () => {
+    const io = fakeIo({});
+    const ChamberUser = fakeChamberUser();
+    const presence = createPresenceService({ io, ChamberUser });
+
+    const cleared = await presence.reconcileStoredPresence();
+
+    assert.equal(cleared, 0);
+    assert.deepEqual(ChamberUser.rows, [], 'nothing should be written when nothing is stale');
+});

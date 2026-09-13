@@ -44,7 +44,7 @@ const startServer = async () => {
     const app = createApp({ allowedOrigins: ALLOWED_ORIGINS });
     const server = http.createServer(app);
 
-    const { io } = createSocketServer({
+    const { io, presence } = createSocketServer({
         httpServer: server,
         allowedOrigins: ALLOWED_ORIGINS,
         jwtSecret: process.env.JWT_SECRET,
@@ -52,6 +52,17 @@ const startServer = async () => {
 
     // Only matters with more than one instance; absent REDIS_URL this is a no-op.
     await attachRedisAdapter(io, process.env.REDIS_URL, console.log);
+
+    // Nobody has a live socket yet — the process just started — so anyone
+    // still stored online is a flag left behind by a restart, a crash, or a
+    // deploy. Clearing it here, before listen(), means the first real client
+    // to connect can never have their own fresh "online" overwritten by this.
+    // Must never stop the server from booting.
+    try {
+        await presence.reconcileStoredPresence();
+    } catch (error) {
+        console.error('Presence reconciliation failed; continuing to boot.', error);
+    }
 
     server.listen(PORT, () => {
         console.log(`\n🚀 Server running on http://localhost:${PORT}`);

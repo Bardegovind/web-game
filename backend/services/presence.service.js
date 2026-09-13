@@ -71,7 +71,35 @@ function createPresenceService(deps) {
         return ChamberUser.find({ isOnline: true }, { username: 1, isOnline: 1, lastSeen: 1 }).lean();
     }
 
-    return { isOnline, connected, disconnected, onlineUsers, socketCount };
+    /**
+     * Clears stale `isOnline` flags left behind by a process that stopped
+     * while someone was connected — a restart, a crash, a deploy, Ctrl+C. None
+     * of that ever runs `disconnected`, so without this a stored "online" can
+     * outlive every socket that ever set it.
+     *
+     * Meant to run once at boot, before the first client can connect. Uses the
+     * same cluster-aware `isOnline` check as everywhere else, so with the
+     * Redis adapter a user connected to another instance is correctly left
+     * online. Returns how many were cleared.
+     */
+    async function reconcileStoredPresence() {
+        const stored = await ChamberUser.find({ isOnline: true }, { username: 1 }).lean();
+
+        let cleared = 0;
+        for (const { username } of stored) {
+            if (await isOnline(username)) continue;
+            await setStored(username, false);
+            cleared += 1;
+        }
+
+        if (cleared > 0) {
+            console.log(`Presence: cleared ${cleared} stale online flag${cleared === 1 ? '' : 's'}`);
+        }
+
+        return cleared;
+    }
+
+    return { isOnline, connected, disconnected, onlineUsers, socketCount, reconcileStoredPresence };
 }
 
 module.exports = { createPresenceService };
