@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, X } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 
 import type { Message } from '../../types';
@@ -124,7 +125,7 @@ export function Conversation({
     }
 
     const status = isTyping
-        ? 'typing'
+        ? 'typing…'
         : isOnline
             ? 'Online'
             : lastSeen
@@ -144,7 +145,7 @@ export function Conversation({
                 </button>
                 <div className="min-w-0">
                     <h2 className="font-display text-lg leading-tight text-chalk">{peer}</h2>
-                    <p className="text-xs text-dust">{status}</p>
+                    <p className={`text-xs ${isTyping ? 'text-lamp' : 'text-dust'}`}>{status}</p>
                 </div>
             </header>
 
@@ -187,7 +188,19 @@ export function Conversation({
                     </div>
                 )}
 
-                {isTyping && <TypingIndicator name={peer} />}
+                <AnimatePresence>
+                    {isTyping && (
+                        <motion.div
+                            key="typing-indicator"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 6 }}
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                        >
+                            <TypingIndicator name={peer} />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
 
             {replyingTo && (

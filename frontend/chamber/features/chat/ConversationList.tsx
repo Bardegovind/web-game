@@ -27,6 +27,7 @@ export function ConversationList({
     onSelect: (peer: string) => void;
 }) {
     const online = usePresenceStore((s) => s.online);
+    const typingFrom = usePresenceStore((s) => s.typingFrom);
 
     if (isLoading) {
         return (
@@ -50,6 +51,7 @@ export function ConversationList({
             {conversations.map((conversation) => {
                 const isOnline = online[conversation.username] ?? conversation.isOnline;
                 const isActive = activePeer === conversation.username;
+                const isTyping = typingFrom[conversation.username] ?? false;
 
                 return (
                     <li key={conversation.username}>
@@ -83,8 +85,8 @@ export function ConversationList({
                                     </span>
                                 </span>
                                 <span className="mt-0.5 flex items-center justify-between gap-2">
-                                    <span className="truncate text-sm text-dust">
-                                        {conversation.lastMessage?.text ?? 'Nothing yet'}
+                                    <span className={`truncate text-sm ${isTyping ? 'text-lamp' : 'text-dust'}`}>
+                                        {isTyping ? 'typing…' : (conversation.lastMessage?.text ?? 'Nothing yet')}
                                     </span>
                                     {conversation.unreadCount > 0 && (
                                         <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-lamp px-1.5 text-[0.68rem] font-semibold text-ink">
