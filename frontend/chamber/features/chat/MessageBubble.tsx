@@ -116,59 +116,61 @@ export function MessageBubble({
                         ))}
                     </div>
                 )}
-            </div>
 
-            {/* Appears on hover, or on a tap of the smile on touch. */}
-            <div
-                className={`absolute top-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 ${
-                    isMine ? 'right-full mr-1' : 'left-full ml-1'
-                } ${showActions ? 'opacity-100' : ''}`}
-            >
-                <button
-                    type="button"
-                    aria-label="Reply"
-                    onClick={() => onReply(message)}
-                    className="rounded-full p-1.5 text-dust transition-colors hover:text-lamp"
+                {/* Appears on hover, or on a tap of the smile on touch. Positioned
+                    against the bubble wrapper (this div), not the full-width row,
+                    so it never pushes the list wider than the viewport. */}
+                <div
+                    className={`absolute top-1 flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 ${
+                        isMine ? 'right-full mr-1' : 'left-full ml-1'
+                    } ${showActions ? 'opacity-100' : ''}`}
                 >
-                    <CornerUpLeft size={14} />
-                </button>
-                <button
-                    type="button"
-                    aria-label="React"
-                    onClick={() => setShowActions((v) => !v)}
-                    className="rounded-full p-1.5 text-dust transition-colors hover:text-lamp"
-                >
-                    <Smile size={14} />
-                </button>
-            </div>
-
-            <AnimatePresence>
-                {showActions && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.92 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.92 }}
-                        transition={{ duration: 0.12 }}
-                        className={`absolute -top-9 z-10 flex gap-1 rounded-full border border-hairline bg-velvet px-2 py-1 shadow-xl ${
-                            isMine ? 'right-0' : 'left-0'
-                        }`}
+                    <button
+                        type="button"
+                        aria-label="Reply"
+                        onClick={() => onReply(message)}
+                        className="rounded-full p-1.5 text-dust transition-colors hover:text-lamp"
                     >
-                        {REACTIONS.map((emoji) => (
-                            <button
-                                key={emoji}
-                                type="button"
-                                onClick={() => {
-                                    toggleReaction(message._id, emoji);
-                                    setShowActions(false);
-                                }}
-                                className="rounded-full px-1 text-base transition-transform hover:scale-125"
-                            >
-                                {emoji}
-                            </button>
-                        ))}
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <CornerUpLeft size={14} />
+                    </button>
+                    <button
+                        type="button"
+                        aria-label="React"
+                        onClick={() => setShowActions((v) => !v)}
+                        className="rounded-full p-1.5 text-dust transition-colors hover:text-lamp"
+                    >
+                        <Smile size={14} />
+                    </button>
+                </div>
+
+                <AnimatePresence>
+                    {showActions && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.92 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.92 }}
+                            transition={{ duration: 0.12 }}
+                            className={`absolute -top-9 z-10 flex gap-1 rounded-full border border-hairline bg-velvet px-2 py-1 shadow-xl ${
+                                isMine ? 'right-0' : 'left-0'
+                            }`}
+                        >
+                            {REACTIONS.map((emoji) => (
+                                <button
+                                    key={emoji}
+                                    type="button"
+                                    onClick={() => {
+                                        toggleReaction(message._id, emoji);
+                                        setShowActions(false);
+                                    }}
+                                    className="rounded-full px-1 text-base transition-transform hover:scale-125"
+                                >
+                                    {emoji}
+                                </button>
+                            ))}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </div>
         </motion.div>
     );
 }

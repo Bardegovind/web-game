@@ -39,7 +39,7 @@ export function Conversation({
     const stored = useChatStore((s) => s.messagesByPeer[peer]);
     const peerReadAt = useChatStore((s) => s.peerReadAt[peer]);
     const { setMessages, addMessage, markFailed } = useChatStore();
-    const bottom = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
     // Server history seeds the store; live messages are appended to it.
@@ -57,7 +57,8 @@ export function Conversation({
     const messages = stored ?? data ?? [];
 
     useEffect(() => {
-        bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        const list = listRef.current;
+        if (list) list.scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
     }, [messages.length, isTyping]);
 
     /** Groups the run of messages under the day they belong to. */
@@ -147,7 +148,12 @@ export function Conversation({
                 </div>
             </header>
 
-            <div className="chamber-scroll min-h-0 flex-1 overflow-y-auto px-3 py-4">
+            <div
+                ref={listRef}
+                role="log"
+                aria-label="Messages"
+                className="chamber-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4"
+            >
                 {isLoading && !stored ? (
                     <MessageSkeleton />
                 ) : isError && messages.length === 0 ? (
@@ -182,7 +188,6 @@ export function Conversation({
                 )}
 
                 {isTyping && <TypingIndicator name={peer} />}
-                <div ref={bottom} />
             </div>
 
             {replyingTo && (
