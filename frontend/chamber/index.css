@@ -15,6 +15,7 @@
 
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+@import "tw-animate-css";
 
 /**
  * The chamber is the same room as the game with the light switched on.
@@ -40,6 +41,25 @@
     --font-ui: "Outfit", system-ui, sans-serif;
 
     --radius-bubble: 18px;
+}
+
+/**
+ * shadcn/ui's colour names, pointed at the chamber's own palette. The values
+ * live on .chamber-root (below), so they exist only inside the chamber.
+ * The radius scale is left alone on purpose: remapping it would round every
+ * existing corner, and the look is Slice 3's job.
+ */
+@theme inline {
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-border: var(--border);
+    --color-ring: var(--ring);
 }
 
 @layer base {
@@ -102,6 +122,27 @@
         outline: 2px solid var(--color-lamp);
         outline-offset: 2px;
         border-radius: 4px;
+    }
+
+    .chamber-root {
+        --background: var(--color-ink);
+        --foreground: var(--color-chalk);
+        --popover: var(--color-velvet);
+        --popover-foreground: var(--color-chalk);
+        --primary: var(--color-lamp);
+        --primary-foreground: var(--color-ink);
+        --muted: var(--color-velvet-lifted);
+        --muted-foreground: var(--color-dust);
+        --border: var(--color-hairline);
+        --ring: var(--color-lamp);
+    }
+
+    /* Preflight would give every border this colour; it is not loaded
+       globally, so the chamber sets it for itself. */
+    .chamber-root *,
+    .chamber-root ::before,
+    .chamber-root ::after {
+        border-color: var(--border);
     }
 }
 

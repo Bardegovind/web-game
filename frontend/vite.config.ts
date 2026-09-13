@@ -19,6 +19,10 @@ export default defineConfig({
     // The game's own scripts and stylesheet are copied through untouched — they
     // are not part of the React bundle and are not meant to be.
     publicDir: resolve(here, 'public'),
+    // shadcn/ui components import from "@/…"; "@" is the chamber source root.
+    resolve: {
+        alias: { '@': resolve(here, 'chamber') },
+    },
     build: {
         outDir: 'dist',
         emptyOutDir: true,
