@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Message, Reaction } from '../types';
+import { insertMessage, markMessageFailed, mergeHistory, reconcileMessage } from './mergeMessages';
 
 interface ChatState {
     activePeer: string | null;
@@ -9,21 +10,12 @@ interface ChatState {
     setPeerReadAt: (peer: string, readAt: string) => void;
     setReactions: (messageId: string, reactions: Reaction[]) => void;
     setActivePeer: (peer: string | null) => void;
+    /** Merges server history in; messages it could not yet include are kept. */
     setMessages: (peer: string, messages: Message[]) => void;
     addMessage: (peer: string, message: Message) => void;
     /** Replaces an optimistic message with the stored one the server confirmed. */
     reconcile: (peer: string, message: Message) => void;
     markFailed: (peer: string, clientId: string) => void;
-}
-
-/** Chronological, and never the same message twice. */
-function insert(existing: Message[], message: Message): Message[] {
-    const alreadyStored = message._id && existing.some((m) => m._id === message._id);
-    if (alreadyStored) return existing;
-
-    return [...existing, message].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-    );
 }
 
 export const useChatStore = create<ChatState>((set) => ({
@@ -46,14 +38,24 @@ export const useChatStore = create<ChatState>((set) => ({
 
     setActivePeer: (activePeer) => set({ activePeer }),
 
+    /**
+     * History is a snapshot that may predate what is on screen, so it is
+     * merged in: a message sent, failed or heard live since it was fetched
+     * stays, and nothing appears twice.
+     */
     setMessages: (peer, messages) =>
-        set((state) => ({ messagesByPeer: { ...state.messagesByPeer, [peer]: messages } })),
+        set((state) => ({
+            messagesByPeer: {
+                ...state.messagesByPeer,
+                [peer]: mergeHistory(state.messagesByPeer[peer] ?? [], messages),
+            },
+        })),
 
     addMessage: (peer, message) =>
         set((state) => ({
             messagesByPeer: {
                 ...state.messagesByPeer,
-                [peer]: insert(state.messagesByPeer[peer] ?? [], message),
+                [peer]: insertMessage(state.messagesByPeer[peer] ?? [], message),
             },
         })),
 
@@ -63,30 +65,18 @@ export const useChatStore = create<ChatState>((set) => ({
      * copy appearing beside it.
      */
     reconcile: (peer, message) =>
-        set((state) => {
-            const current = state.messagesByPeer[peer] ?? [];
-            const optimisticIndex = message.clientId
-                ? current.findIndex((m) => m.clientId === message.clientId && m.pending)
-                : -1;
-
-            if (optimisticIndex === -1) {
-                return {
-                    messagesByPeer: { ...state.messagesByPeer, [peer]: insert(current, message) },
-                };
-            }
-
-            const next = current.slice();
-            next[optimisticIndex] = { ...message, pending: false };
-            return { messagesByPeer: { ...state.messagesByPeer, [peer]: next } };
-        }),
+        set((state) => ({
+            messagesByPeer: {
+                ...state.messagesByPeer,
+                [peer]: reconcileMessage(state.messagesByPeer[peer] ?? [], message),
+            },
+        })),
 
     markFailed: (peer, clientId) =>
         set((state) => ({
             messagesByPeer: {
                 ...state.messagesByPeer,
-                [peer]: (state.messagesByPeer[peer] ?? []).map((m) =>
-                    m.clientId === clientId ? { ...m, pending: false, failed: true } : m
-                ),
+                [peer]: markMessageFailed(state.messagesByPeer[peer] ?? [], clientId),
             },
         })),
 }));
