@@ -172,13 +172,6 @@
         backdrop-filter: blur(20px);
     }
 
-    /* Glass without the blur, for things there are many of in a scrolling
-       list (message bubbles), where a blur per item costs every frame. */
-    .chamber-root .glass-flat {
-        background-color: rgba(255, 255, 255, 0.06);
-        border: 1px solid var(--color-hairline);
-    }
-
     /* Solid velvet glass: sheets, toasts, dialogs, the banner. */
     .chamber-root .glass-solid {
         background-color: rgba(26, 15, 31, 0.92);
@@ -336,10 +329,18 @@
         box-shadow: 0 6px 22px rgba(255, 60, 131, 0.2);
     }
 
+    /* Hers are glass without the blur: there are many in a scrolling list,
+       and a blur per bubble costs every frame. */
     .chamber-root .bubble-theirs {
         background-color: rgba(255, 255, 255, 0.06);
         border: 1px solid var(--color-hairline);
         color: var(--color-chalk);
+    }
+
+    /* Room for the online dot and a small heart side by side. Sonner's own
+       rule is unlayered, so only an important declaration outranks it. */
+    .chamber-root [data-sonner-toast] [data-icon] {
+        width: auto !important;
     }
 
     .chamber-root .love-bar {

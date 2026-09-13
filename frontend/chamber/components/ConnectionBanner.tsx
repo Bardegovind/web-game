@@ -20,9 +20,9 @@ export function ConnectionBanner() {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.25 }}
                     role="status"
-                    className="flex items-center justify-center gap-2 bg-velvet-lifted/90 px-4 py-2 text-xs text-dust backdrop-blur"
+                    className="glass-solid flex items-center justify-center gap-2 border-x-0 border-t-0 px-4 py-2 text-xs text-dust shadow-[0_8px_28px_rgba(255,60,131,0.1)]"
                 >
-                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-lamp-dim" />
+                    <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-lamp" />
                     Reconnecting. Your messages are safe.
                 </motion.div>
             )}

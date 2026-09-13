@@ -68,7 +68,12 @@ export function App() {
             notify: ({ kind, username: who }) => {
                 if (kind === 'arrived') {
                     toast(`${who} is here`, {
-                        icon: <span aria-hidden="true" className="block size-2 rounded-full bg-emerald-400" />,
+                        icon: (
+                            <span aria-hidden="true" className="flex items-center gap-[3px]">
+                                <span className="block size-2 rounded-full bg-emerald-400" />
+                                <HeartGlyph size={10} className="text-heart" />
+                            </span>
+                        ),
                     });
                 } else {
                     toast(`${who} left`);
@@ -188,7 +193,15 @@ export function App() {
 
             <header className="flex items-center justify-between px-4 pt-4 pb-2">
                 <div>
-                    <h1 className="font-display text-xl leading-none text-chalk italic">ours</h1>
+                    <div className="flex items-center gap-1.5">
+                        <h1 className="love-text font-display text-[1.6rem] leading-none font-extrabold tracking-tight">
+                            ours
+                        </h1>
+                        <HeartGlyph
+                            size={13}
+                            className="chamber-heartbeat mt-0.5 text-heart drop-shadow-[0_0_6px_rgba(255,60,131,0.6)]"
+                        />
+                    </div>
                     <p className="mt-1 text-xs text-dust">{username}</p>
                 </div>
                 <button
@@ -201,7 +214,7 @@ export function App() {
                         window.dispatchEvent(new CustomEvent('chamber:left'));
                     }}
                     aria-label="Leave"
-                    className="rounded-full p-2 text-dust transition-colors hover:text-chalk"
+                    className="glass rounded-full p-2 text-dust transition-colors hover:text-chalk"
                 >
                     <X size={18} />
                 </button>
