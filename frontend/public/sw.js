@@ -12,7 +12,9 @@
  * Content may not.
  */
 
-const VERSION = 'v1';
+// Bumped from v1 when the caching strategy changed, so a phone still holding the
+// v1 cache — which may contain stale copies of the game's scripts — drops it.
+const VERSION = 'v2';
 const SHELL_CACHE = `shell-${VERSION}`;
 
 // Only what is needed to render the game with no network.
@@ -47,32 +49,65 @@ self.addEventListener('fetch', (event) => {
     if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/socket.io/')) return;
 
     // A navigation falls back to the cached shell when there is no signal, so
-    // she gets the game rather than the browser's offline page.
+    // she gets the game rather than the browser's offline page. Each successful
+    // load refreshes that copy, so offline she gets the last release she had.
     if (request.mode === 'navigate') {
         event.respondWith(
-            fetch(request).catch(() => caches.match('/index.html').then((r) => r || Response.error()))
+            fetch(request)
+                .then((response) => {
+                    remember('/index.html', response);
+                    return response;
+                })
+                .catch(() => caches.match('/index.html').then((r) => r || Response.error()))
         );
         return;
     }
 
-    // Built assets carry a content hash in their name, so a cache hit is always
-    // the right file and can be served without asking the network.
-    event.respondWith(
-        caches.match(request).then((cached) => {
-            if (cached) return cached;
+    // The React bundle lives under /assets/ with a content hash in every file
+    // name, so a cached copy is always the right one and can be served at once.
+    if (url.pathname.startsWith('/assets/')) {
+        event.respondWith(cacheFirst(request));
+        return;
+    }
 
-            return fetch(request).then((response) => {
-                if (!response || response.status !== 200 || response.type !== 'basic') {
-                    return response;
-                }
-
-                const copy = response.clone();
-                caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy));
-                return response;
-            }).catch(() => cached || Response.error());
-        })
-    );
+    // Everything else keeps its name from one release to the next — the game's
+    // scripts, its stylesheet, the icons. Serving those cache-first meant a phone
+    // that had visited once would never load a fix to the corners again. So:
+    // the network whenever there is signal, and the cache only when there is not.
+    event.respondWith(networkFirst(request));
 });
+
+function cacheable(response) {
+    return Boolean(response) && response.status === 200 && response.type === 'basic';
+}
+
+/** Keeps a copy for offline use. The clone is taken before the body is read. */
+function remember(key, response) {
+    if (!cacheable(response)) return;
+
+    const copy = response.clone();
+    caches.open(SHELL_CACHE).then((cache) => cache.put(key, copy));
+}
+
+function cacheFirst(request) {
+    return caches.match(request).then((cached) => {
+        if (cached) return cached;
+
+        return fetch(request).then((response) => {
+            remember(request, response);
+            return response;
+        });
+    });
+}
+
+function networkFirst(request) {
+    return fetch(request)
+        .then((response) => {
+            remember(request, response);
+            return response;
+        })
+        .catch(() => caches.match(request).then((cached) => cached || Response.error()));
+}
 
 /**
  * Push notifications.
