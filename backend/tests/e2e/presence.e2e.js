@@ -97,7 +97,7 @@ test('live presence toasts', async (t) => {
     });
 
     await t.test('their online dot turns green', async () => {
-        await page.locator('nav button').filter({ hasText: 'messages' }).first().click();
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="Chat"]').click();
         const dot = page.locator('[aria-label="Online"]').first();
         await dot.waitFor({ timeout: 5000 });
         assert.match(await dot.getAttribute('class'), /bg-emerald-400/);

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
 
@@ -14,6 +14,10 @@ import { Letters } from '../features/letters/Letters';
 import { Story } from '../features/story/Story';
 import { Bucket } from '../features/bucket/Bucket';
 
+import { BottomNav } from './BottomNav';
+import { MoreSheet } from './MoreSheet';
+import { sectionFor, type Screen, type Section } from './navigation';
+
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
 import { useConversations, conversationsKey } from '../hooks/useConversations';
@@ -24,12 +28,11 @@ import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
 import { createPresenceNotifier, type PresenceNotifier } from '../presence/presenceNotifier';
 
-const TABS = ['today', 'messages', 'moments', 'letters', 'story', 'list'] as const;
-type Tab = (typeof TABS)[number];
-
 export function App() {
     const { username, token, isInside, leave } = useAuthStore();
-    const [tab, setTab] = useState<Tab>('today');
+    const [screen, setScreen] = useState<Screen>('today');
+    const [moreOpen, setMoreOpen] = useState(false);
+    const [root, setRoot] = useState<HTMLDivElement | null>(null);
     const [showEntrance, setShowEntrance] = useState(true);
     const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -102,15 +105,13 @@ export function App() {
     const list = conversations ?? [];
     const active = list.find((c) => c.username === activePeer) ?? null;
 
-    /** A quiet count beside a word, only when there is something to say. */
-    const badgeFor = (name: Tab): number => {
-        if (name === 'messages') return today?.unreadMessages ?? 0;
-        if (name === 'letters') return today?.unopenedLetters ?? 0;
-        return 0;
+    const badges = {
+        chat: today?.unreadMessages ?? 0,
+        letters: today?.unopenedLetters ?? 0,
     };
 
     return (
-        <div className="chamber-root fixed inset-0 z-50 flex flex-col">
+        <div ref={setRoot} className="chamber-root fixed inset-0 z-50 flex flex-col">
             <AnimatePresence>
                 {showEntrance && <Entrance onDone={() => setShowEntrance(false)} />}
             </AnimatePresence>
@@ -139,44 +140,14 @@ export function App() {
                 </button>
             </header>
 
-            {/* Scrolls sideways on a narrow screen rather than wrapping into a
-                second row or shrinking into icons. */}
-            <nav className="chamber-scroll flex gap-5 overflow-x-auto border-b border-hairline px-4">
-                {TABS.map((name) => {
-                    const badge = badgeFor(name);
-
-                    return (
-                        <button
-                            key={name}
-                            type="button"
-                            onClick={() => setTab(name)}
-                            className={`relative shrink-0 pb-2.5 font-display text-[0.95rem] transition-colors ${
-                                tab === name ? 'text-chalk' : 'text-dust hover:text-chalk/80'
-                            }`}
-                        >
-                            {name}
-                            {badge > 0 && (
-                                <span className="ml-1.5 align-super text-[0.6rem] text-lamp">{badge}</span>
-                            )}
-                            {tab === name && (
-                                <motion.span
-                                    layoutId="tab-underline"
-                                    className="absolute inset-x-0 -bottom-px h-0.5 rounded-full bg-lamp"
-                                />
-                            )}
-                        </button>
-                    );
-                })}
-            </nav>
-
             <main className="flex min-h-0 flex-1 flex-col">
-                {tab === 'today' && <Today onOpenImage={setLightbox} />}
-                {tab === 'moments' && <MemoryGrid onOpenImage={setLightbox} />}
-                {tab === 'letters' && <Letters />}
-                {tab === 'story' && <Story />}
-                {tab === 'list' && <Bucket />}
+                {screen === 'today' && <Today onOpenImage={setLightbox} />}
+                {screen === 'moments' && <MemoryGrid onOpenImage={setLightbox} />}
+                {screen === 'letters' && <Letters />}
+                {screen === 'story' && <Story />}
+                {screen === 'list' && <Bucket />}
 
-                {tab === 'messages' && (
+                {screen === 'chat' && (
                     <div className="flex h-full min-h-0">
                         {/* Mobile shows one at a time; a squeezed three-pane
                             layout on a phone helps no one. */}
@@ -212,6 +183,20 @@ export function App() {
                     </div>
                 )}
             </main>
+
+            <BottomNav
+                active={sectionFor(screen)}
+                badges={badges}
+                onSelect={(section: Section) => {
+                    if (section === 'more') {
+                        setMoreOpen(true);
+                        return;
+                    }
+                    setScreen(section);
+                }}
+            />
+
+            <MoreSheet open={moreOpen} onOpenChange={setMoreOpen} container={root} onSelect={setScreen} />
 
             <Lightbox url={lightbox} onClose={() => setLightbox(null)} />
         </div>

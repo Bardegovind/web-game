@@ -163,9 +163,16 @@ test('the chamber, end to end', async (t) => {
         );
     });
 
+    await t.test('the bottom bar offers exactly Today, Chat, Moments, Letters and More', async () => {
+        const labels = await page.locator('nav[aria-label="Chamber sections"] button').evaluateAll(
+            (buttons) => buttons.map((b) => b.getAttribute('aria-label'))
+        );
+        assert.deepEqual(labels, ['Today', 'Chat', 'Moments', 'Letters', 'More']);
+    });
+
     await t.test('the other person appears in the conversation list', async () => {
-        // The chamber opens on `today` now, so the conversations live a tab away.
-        await page.locator('nav button').filter({ hasText: 'messages' }).first().click();
+        // The chamber opens on Today, so the conversations are one tap away.
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="Chat"]').click();
         await page.waitForSelector(`text=${HIM}`, { timeout: 6000 });
     });
 
@@ -254,7 +261,7 @@ test('the chamber, end to end', async (t) => {
     });
 
     await t.test('today opens with what is waiting', async () => {
-        await page.locator('nav button').filter({ hasText: 'today' }).first().click();
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="Today"]').click();
         await page.waitForSelector('text=Today\'s question', { timeout: 6000 });
 
         const body = await page.locator('#chamber-root').innerText();
@@ -282,7 +289,7 @@ test('the chamber, end to end', async (t) => {
             }),
         });
 
-        await page.locator('nav button').filter({ hasText: 'letters' }).first().click();
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="Letters"]').click();
         await page.waitForSelector('text=Open when you miss me', { timeout: 6000 });
 
         const body = await page.locator('#chamber-root').innerText();
@@ -299,7 +306,8 @@ test('the chamber, end to end', async (t) => {
     });
 
     await t.test('the shared list can be added to and ticked off', async () => {
-        await page.locator('nav button').filter({ hasText: 'list' }).first().click();
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="More"]').click();
+        await page.locator('[role="dialog"] [aria-label="List"]').click();
         await page.waitForSelector('input[placeholder="Something we should do"]', { timeout: 6000 });
 
         await page.fill('input[placeholder="Something we should do"]', 'Watch the sunrise together');
@@ -322,7 +330,8 @@ test('the chamber, end to end', async (t) => {
             });
         }
 
-        await page.locator('nav button').filter({ hasText: 'story' }).first().click();
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="More"]').click();
+        await page.locator('[role="dialog"] [aria-label="Story"]').click();
         await page.waitForSelector('text=The beginning', { timeout: 6000 });
 
         const body = await page.locator('#chamber-root').innerText();
@@ -333,7 +342,7 @@ test('the chamber, end to end', async (t) => {
     });
 
     await t.test('leaving puts the game back and re-arms the corners', async () => {
-        await page.locator('nav button').filter({ hasText: 'messages' }).first().click();
+        await page.locator('nav[aria-label="Chamber sections"] [aria-label="Chat"]').click();
         await page.click('[aria-label="Leave"]');
         await page.waitForTimeout(400);
 
