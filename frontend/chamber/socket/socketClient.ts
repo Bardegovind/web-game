@@ -11,6 +11,7 @@ export interface SocketCallbacks {
     onMessage?: (message: Message) => void;
     onRead?: (receipt: ReadReceipt) => void;
     onResync?: () => void;
+    onPresence?: (update: PresencePayload) => void;
 }
 
 let callbacks: SocketCallbacks = {};
@@ -40,6 +41,7 @@ export function connectSocket(token: string): Socket {
 
     socket.on(EVENTS.PRESENCE_UPDATE, (payload: PresencePayload) => {
         usePresenceStore.getState().setOnline(payload.username, payload.isOnline);
+        callbacks.onPresence?.(payload);
     });
 
     socket.on(EVENTS.MESSAGE_NEW, (message: Message) => callbacks.onMessage?.(message));

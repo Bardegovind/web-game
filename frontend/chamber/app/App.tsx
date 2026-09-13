@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useQueryClient } from '@tanstack/react-query';
 import { X } from 'lucide-react';
@@ -20,6 +20,9 @@ import { useConversations, conversationsKey } from '../hooks/useConversations';
 import { messagesKey } from '../hooks/useMessages';
 import { useToday, todayKey } from '../hooks/useChamber';
 import { connectSocket, disconnectSocket, setSocketCallbacks } from '../socket/socketClient';
+import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/sonner';
+import { createPresenceNotifier, type PresenceNotifier } from '../presence/presenceNotifier';
 
 const TABS = ['today', 'messages', 'moments', 'letters', 'story', 'list'] as const;
 type Tab = (typeof TABS)[number];
@@ -38,6 +41,37 @@ export function App() {
     const { data: conversations, isLoading, isError, refetch } = useConversations();
     const { data: today } = useToday();
 
+    const notifierRef = useRef<PresenceNotifier | null>(null);
+
+    // One notifier per visit. It decides; Sonner shows.
+    useEffect(() => {
+        if (!isInside || !username) return;
+
+        const notifier = createPresenceNotifier({
+            me: username,
+            notify: ({ kind, username: who }) => {
+                if (kind === 'arrived') {
+                    toast(`${who} is here`, {
+                        icon: <span aria-hidden="true" className="block size-2 rounded-full bg-emerald-400" />,
+                    });
+                } else {
+                    toast(`${who} left`);
+                }
+            },
+        });
+
+        notifierRef.current = notifier;
+        return () => {
+            notifier.dispose();
+            notifierRef.current = null;
+        };
+    }, [isInside, username]);
+
+    // Whoever is already here when she enters is known, not announced.
+    useEffect(() => {
+        if (conversations) notifierRef.current?.seed(conversations);
+    }, [conversations]);
+
     useEffect(() => {
         if (!isInside || !token) return;
 
@@ -48,6 +82,7 @@ export function App() {
                 queryClient.invalidateQueries({ queryKey: todayKey });
             },
             onRead: () => queryClient.invalidateQueries({ queryKey: conversationsKey }),
+            onPresence: (update) => notifierRef.current?.handle(update),
             onResync: () => {
                 // Whatever arrived while the socket was away is fetched rather
                 // than guessed at.
@@ -81,6 +116,7 @@ export function App() {
             </AnimatePresence>
 
             <ConnectionBanner />
+            <Toaster />
 
             <header className="flex items-center justify-between px-4 pt-4 pb-2">
                 <div>
