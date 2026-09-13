@@ -18,20 +18,25 @@ import { useAuthStore } from '../../stores/authStore';
 import { newClientId, sendMessage, sendRead, sendTyping } from '../../socket/socketClient';
 import { api } from '../../api/client';
 import { useMarkRead } from '../../hooks/useConversations';
+import { isPeerOnline } from '../../presence/onlineStatus';
 
 export function Conversation({
     peer,
     lastSeen,
+    storedOnline,
     onBack,
     onOpenImage,
 }: {
     peer: string;
     lastSeen: string | null;
+    /** The conversations list's last-known value, used only until a live socket update arrives. */
+    storedOnline?: boolean;
     onBack: () => void;
     onOpenImage: (url: string) => void;
 }) {
     const me = useAuthStore((s) => s.username);
-    const isOnline = usePresenceStore((s) => s.online[peer]);
+    const liveOnline = usePresenceStore((s) => s.online[peer]);
+    const isOnline = isPeerOnline(liveOnline, storedOnline);
     const isTyping = usePresenceStore((s) => s.typingFrom[peer]);
     const queryClient = useQueryClient();
     const markRead = useMarkRead();
@@ -56,6 +61,70 @@ export function Conversation({
     }, [peer]);
 
     const messages = stored ?? data ?? [];
+
+    // The id of the newest message she sent us, so a fresh arrival can be
+    // told apart from the batch that was already here when this
+    // conversation opened.
+    const latestIncomingId = useMemo(() => {
+        for (let i = messages.length - 1; i >= 0; i--) {
+            const message = messages[i];
+            if (message && message.sender === peer) return message._id;
+        }
+        return null;
+    }, [messages, peer]);
+
+    const seenIncomingIdRef = useRef<string | null>(null);
+    const pendingWhileHiddenRef = useRef(false);
+
+    // A new peer means the "opening a conversation is reading it" effect
+    // above already marked this one read; forget what we were tracking so
+    // its first batch of messages isn't treated as "arrived while already
+    // reading".
+    useEffect(() => {
+        seenIncomingIdRef.current = null;
+        pendingWhileHiddenRef.current = false;
+    }, [peer]);
+
+    // A message from her that arrives while this conversation is already
+    // open is read the same way opening it is — but at most once per new
+    // latest message, and only while the page is actually visible. One that
+    // arrives while the tab is hidden waits for the visibilitychange effect
+    // below.
+    useEffect(() => {
+        if (!latestIncomingId) return;
+
+        if (seenIncomingIdRef.current === null) {
+            // First observation for this peer: the opening effect already
+            // marked it read, so skip it here.
+            seenIncomingIdRef.current = latestIncomingId;
+            return;
+        }
+
+        if (latestIncomingId === seenIncomingIdRef.current) return;
+        seenIncomingIdRef.current = latestIncomingId;
+
+        if (document.visibilityState === 'visible') {
+            sendRead(peer);
+            markRead.mutate(peer);
+        } else {
+            pendingWhileHiddenRef.current = true;
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [latestIncomingId]);
+
+    // Catches up on anything that arrived while the tab was hidden.
+    useEffect(() => {
+        function onVisibilityChange() {
+            if (document.visibilityState === 'visible' && pendingWhileHiddenRef.current) {
+                pendingWhileHiddenRef.current = false;
+                sendRead(peer);
+                markRead.mutate(peer);
+            }
+        }
+        document.addEventListener('visibilitychange', onVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [peer]);
 
     useEffect(() => {
         const list = listRef.current;

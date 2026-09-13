@@ -2,6 +2,7 @@ import { motion } from 'framer-motion';
 import type { Conversation } from '../../types';
 import { formatTime, formatDayLabel, isSameDay } from '../../utils/time';
 import { usePresenceStore } from '../../stores/presenceStore';
+import { isPeerOnline } from '../../presence/onlineStatus';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
 
@@ -49,7 +50,7 @@ export function ConversationList({
     return (
         <ul className="chamber-scroll min-h-0 flex-1 overflow-y-auto p-2">
             {conversations.map((conversation) => {
-                const isOnline = online[conversation.username] ?? conversation.isOnline;
+                const isOnline = isPeerOnline(online[conversation.username], conversation.isOnline);
                 const isActive = activePeer === conversation.username;
                 const isTyping = typingFrom[conversation.username] ?? false;
 

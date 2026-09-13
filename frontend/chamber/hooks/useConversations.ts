@@ -2,6 +2,7 @@ import { queryOptions, useQuery, useMutation, useQueryClient } from '@tanstack/r
 import { api } from '../api/client';
 import type { Conversation } from '../types';
 import { useAuthStore } from '../stores/authStore';
+import { todayKey } from './useChamber';
 
 export const conversationsKey = ['conversations'] as const;
 
@@ -29,6 +30,13 @@ export function useMarkRead() {
 
     return useMutation({
         mutationFn: (peer: string) => api.post(`/chat/read/${peer}`),
-        onSuccess: () => queryClient.invalidateQueries({ queryKey: conversationsKey }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: conversationsKey });
+            // Reading a conversation changes the server's unread count, which
+            // is exactly what feeds the bottom bar's Chat badge — without
+            // this, the badge only catches up when Today goes stale, the
+            // window regains focus, or a new message arrives.
+            queryClient.invalidateQueries({ queryKey: todayKey });
+        },
     });
 }

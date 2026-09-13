@@ -186,6 +186,7 @@ export function App() {
                                 <Conversation
                                     peer={activePeer}
                                     lastSeen={active?.lastSeen ?? null}
+                                    storedOnline={active?.isOnline}
                                     onBack={() => setActivePeer(null)}
                                     onOpenImage={setLightbox}
                                 />
