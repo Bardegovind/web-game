@@ -16,9 +16,26 @@ password
 Secret Chamber
 ```
 
-Corner positions, sizes, counts, order and the 8s idle window are fixed. She
-already knows this sequence; it is the one thing in the project that must never
-be redesigned.
+Corner positions, counts, order and the 8s idle window are fixed. She already
+knows this sequence; it is the one thing in the project that must never be
+redesigned. The corners' *sizes* are not part of it: they were enlarged so a
+real thumb lands on them, and `tests/e2e/tapTolerance.e2e.js` keeps them that way.
+
+### What she feels
+
+Every tap on a hidden corner vibrates, and the feeling says what happened to
+it, so there is nothing to count:
+
+| Feeling | Meaning |
+|---|---|
+| short tick | that tap counted |
+| two pulses | this corner is done, move to the next |
+| one long buzz | that tap did not count — start again at top-left |
+| a longer pattern | the door is opening |
+
+Tap each corner until you feel two pulses, then move on. Taps on the game board
+never vibrate. iPhones do not support web vibration, so on an iPhone none of
+this is felt and the counts have to be done by hand.
 
 ## Running it
 

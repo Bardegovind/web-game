@@ -28,18 +28,22 @@
     const ZONE_SELECTOR = '[data-tap]';
 
     /**
-     * What each moment feels like.
+     * What each moment feels like. Every tap on a corner is one of these four.
      *
-     * The tick is unchanged — it was already reported as felt on a real phone.
-     * The other two exist because the tick alone could not tell her when to
-     * stop: sixteen identical buzzes are not countable by feel, and one too
-     * many or one too few silently sent her back to the start. Now she taps
-     * until she feels two pulses, and moves on.
+     * TICK        counted. Unchanged — already reported as felt on a real phone.
+     * STEP_DONE   this corner is finished, move to the next one. Exists because
+     *             sixteen identical ticks cannot be counted by feel.
+     * START_OVER  that tap did not count, begin again at top-left. Exists because
+     *             a tap on the wrong corner used to be silent, and on a real phone
+     *             that silence looked exactly like a dead corner — there was no
+     *             way to tell a miscount from a tap that never landed.
+     * UNLOCKED    the door is opening.
      */
     const HAPTICS = {
         TICK: 8,
         STEP_DONE: [40, 60, 40],
         UNLOCKED: [70, 50, 110],
+        START_OVER: 220,
     };
 
     function createTapZones(options) {
@@ -56,9 +60,14 @@
         /**
          * Silent, invisible feedback, felt only by the hand holding the phone.
          *
-         * Only accepted taps are felt. A near-miss, or a corner tapped out of
-         * order, stays silent — so nothing a stranger does by accident feels
-         * like anything, and the count in her hand is the count the machine has.
+         * Every tap that lands on a corner is felt, and the feeling says what
+         * happened to it. A tap that misses the corners entirely is not felt,
+         * and neither is anything on the game board.
+         *
+         * The cost, accepted on purpose: someone idly tapping a corner will feel
+         * it too, which makes the corners slightly discoverable. The alternative
+         * was a corner that went quiet whenever she was one tap out, which she
+         * could not tell apart from a broken one.
          */
         function feel(pattern) {
             if (!opts.haptics) return;
@@ -79,11 +88,10 @@
 
                 const result = sequence.tap(zoneId, clock());
 
-                // Three things she can feel, and nothing else: an ordinary tap,
-                // the end of a corner, and the door opening.
                 if (result.unlocked) feel(HAPTICS.UNLOCKED);
                 else if (result.stepCompleted) feel(HAPTICS.STEP_DONE);
                 else if (result.progressed) feel(HAPTICS.TICK);
+                else if (result.reset) feel(HAPTICS.START_OVER);
 
                 if (result.unlocked) {
                     disarm();

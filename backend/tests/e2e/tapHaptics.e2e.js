@@ -3,14 +3,24 @@
 /**
  * What her hand feels during the ritual.
  *
- * Reported from a real phone: the top-left corner buzzed on every tap, the
- * other two never did. Instrumenting it showed the haptics were fine — the
- * problem was counting. Sixteen identical buzzes cannot be counted reliably by
- * feel, and landing on fifteen or seventeen sends the machine back to the start,
- * after which the other two corners do nothing and say nothing.
+ * Reported twice from a real phone: the top-left corner buzzed, the top-right
+ * and bottom-right did not, so there was no way to tell whether a tap on those
+ * corners had landed at all.
  *
- * So the end of each step has to feel different from an ordinary tap. She taps
- * until she feels it, then moves on, and never has to count.
+ * The first cause was counting. Sixteen identical buzzes cannot be counted by
+ * feel, and landing on fifteen or seventeen sends the machine back to the
+ * start. So the end of each corner feels different now.
+ *
+ * The second cause was silence. A tap on top-right before top-left was
+ * finished gave nothing back, so a miscount looked exactly like a dead corner.
+ * Every tap on a corner is now felt, and what it feels like says what happened:
+ *
+ *   tick         counted
+ *   two pulses   this corner is done, move on
+ *   long buzz    that did not count, start again from top-left
+ *   unlock       the door is opening
+ *
+ * Taps on the game itself are never felt.
  */
 
 const test = require('node:test');
@@ -19,6 +29,8 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { chromium } = require('playwright-core');
+
+const { HAPTICS } = require('../../../frontend/public/js/tapZones.js');
 
 const FRONTEND = path.join(__dirname, '..', '..', '..', 'frontend', 'dist');
 const CHROME = '/usr/bin/google-chrome';
@@ -29,6 +41,11 @@ const MIME = {
     '.png': 'image/png',
     '.webmanifest': 'application/json',
 };
+
+const TICK = JSON.stringify(HAPTICS.TICK);
+const STEP_DONE = JSON.stringify(HAPTICS.STEP_DONE);
+const UNLOCKED = JSON.stringify(HAPTICS.UNLOCKED);
+const START_OVER = JSON.stringify(HAPTICS.START_OVER);
 
 function startStaticServer() {
     const server = http.createServer((req, res) => {
@@ -92,6 +109,17 @@ const felt = (page) => page.evaluate(() => window.__felt.slice());
 if (!fs.existsSync(path.join(FRONTEND, 'index.html'))) {
     test('haptics', (t) => t.skip('needs a built frontend: cd frontend && npm run build'));
 } else {
+    test('the four feelings are all different from each other', () => {
+        // Checked explicitly: an undefined pattern would otherwise compare equal
+        // to another undefined one and let a missing feeling pass unnoticed.
+        for (const [name, pattern] of Object.entries({ TICK, STEP_DONE, UNLOCKED, START_OVER })) {
+            assert.ok(pattern !== undefined, `${name} must be defined`);
+        }
+
+        const all = [TICK, STEP_DONE, UNLOCKED, START_OVER];
+        assert.equal(new Set(all).size, 4, 'each moment must be distinguishable by feel alone');
+    });
+
     test('every counted tap on every corner is felt', async (t) => {
         const page = await openRecordingPhone(t);
 
@@ -109,30 +137,23 @@ if (!fs.existsSync(path.join(FRONTEND, 'index.html'))) {
         await tapCorner(page, 1, 16);
         const pulses = await felt(page);
 
-        const tick = pulses[0];
-        assert.ok(
-            pulses.slice(0, 15).every((p) => p === tick),
-            'the first fifteen should all feel the same'
-        );
-        assert.notEqual(pulses[15], tick, 'the sixteenth must not feel like the fifteen before it');
+        assert.ok(pulses.slice(0, 15).every((p) => p === TICK), 'the first fifteen are ordinary ticks');
+        assert.equal(pulses[15], STEP_DONE, 'the sixteenth says "move on"');
     });
 
-    test('the third tap on the second corner feels the same as the sixteenth did', async (t) => {
+    test('the third tap on top-right says "move on" too', async (t) => {
         const page = await openRecordingPhone(t);
 
         await tapCorner(page, 1, 16);
         await tapCorner(page, 2, 3);
         const pulses = await felt(page);
 
-        const tick = pulses[0];
-        const stepDone = pulses[15];
-
-        assert.equal(pulses[16], tick, 'the first tap on the second corner is an ordinary tap');
-        assert.equal(pulses[17], tick);
-        assert.equal(pulses[18], stepDone, 'one signal means "move on", wherever she is');
+        assert.equal(pulses[16], TICK);
+        assert.equal(pulses[17], TICK);
+        assert.equal(pulses[18], STEP_DONE);
     });
 
-    test('opening the door feels different again', async (t) => {
+    test('opening the door feels like opening the door', async (t) => {
         const page = await openRecordingPhone(t);
 
         await tapCorner(page, 1, 16);
@@ -140,26 +161,76 @@ if (!fs.existsSync(path.join(FRONTEND, 'index.html'))) {
         await tapCorner(page, 3, 7);
         const pulses = await felt(page);
 
-        const tick = pulses[0];
-        const stepDone = pulses[15];
-        const opened = pulses[25];
-
-        assert.ok(pulses.slice(19, 25).every((p) => p === tick), 'the first six on the last corner are ordinary');
-        assert.notEqual(opened, tick, 'the seventh is not an ordinary tap');
-        assert.notEqual(opened, stepDone, 'and it is not a step either — the door has opened');
+        assert.ok(pulses.slice(19, 25).every((p) => p === TICK), 'the first six on bottom-right are ordinary ticks');
+        assert.equal(pulses[25], UNLOCKED);
         assert.ok(await page.locator('#password-modal.show').isVisible());
     });
 
     /**
-     * Nothing a stranger does by accident should feel like anything. A single
-     * tap on the top-right corner of a fresh game is not part of the ritual.
+     * The reported problem, exactly. One short on top-left used to make every
+     * tap on top-right completely silent, which looked like a dead corner.
      */
-    test('a stray tap on another corner at the start is not felt', async (t) => {
+    test('top-right is felt even when top-left was not finished', async (t) => {
+        const page = await openRecordingPhone(t);
+
+        await tapCorner(page, 1, 15);
+        await tapCorner(page, 2, 3);
+        const pulses = await felt(page);
+
+        assert.equal(pulses.length, 18, 'fifteen on top-left and three on top-right: all eighteen felt');
+        assert.deepEqual(
+            pulses.slice(15),
+            [START_OVER, START_OVER, START_OVER],
+            'each tap on top-right says "that did not count, start again"'
+        );
+    });
+
+    test('bottom-right is felt even when the corners before it were not finished', async (t) => {
+        const page = await openRecordingPhone(t);
+
+        await tapCorner(page, 1, 16);
+        await tapCorner(page, 2, 2);
+        await tapCorner(page, 3, 2);
+        const pulses = await felt(page);
+
+        assert.equal(pulses.length, 20, 'every tap on every corner is felt');
+        assert.deepEqual(pulses.slice(18), [START_OVER, START_OVER]);
+    });
+
+    test('one tap too many on top-left is felt as start again', async (t) => {
+        const page = await openRecordingPhone(t);
+
+        await tapCorner(page, 1, 17);
+        const pulses = await felt(page);
+
+        assert.equal(pulses.length, 17, 'all seventeen taps are felt, including the one too many');
+        assert.equal(pulses[15], STEP_DONE);
+        assert.equal(pulses[16], START_OVER, 'the seventeenth tells her she went one too far');
+    });
+
+    test('after a start-again buzz, the ritual works from the beginning', async (t) => {
         const page = await openRecordingPhone(t);
 
         await tapCorner(page, 2, 1);
-        await tapCorner(page, 3, 1);
+        await tapCorner(page, 1, 16);
+        await tapCorner(page, 2, 3);
+        await tapCorner(page, 3, 7);
 
-        assert.deepEqual(await felt(page), [], 'a corner tapped out of order gives nothing away');
+        const pulses = await felt(page);
+        assert.equal(pulses[0], START_OVER);
+        assert.equal(pulses[pulses.length - 1], UNLOCKED);
+        assert.ok(await page.locator('#password-modal.show').isVisible());
+    });
+
+    test('playing the game itself never vibrates', async (t) => {
+        const page = await openRecordingPhone(t);
+
+        for (const cell of [4, 0, 8, 2]) {
+            await page.locator(`[data-cell="${cell}"]`).tap();
+            await page.waitForTimeout(60);
+        }
+        await page.locator('#btn-restart').tap();
+
+        assert.deepEqual(await felt(page), [], 'only the hidden corners are ever felt');
     });
 }
