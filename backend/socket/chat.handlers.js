@@ -5,6 +5,14 @@ const { applyReaction } = require('../services/reactions');
 
 const MAX_MESSAGE_LENGTH = 4000;
 
+/** A UUID, or the client's `c-<time>-<hex>` fallback: short and plain. */
+const STORABLE_CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** The sender's own id for the message, if it is one worth keeping; otherwise nothing is stored. */
+function storableClientId(value) {
+    return typeof value === 'string' && STORABLE_CLIENT_ID.test(value) ? value : undefined;
+}
+
 /**
  * Message delivery.
  *
@@ -51,6 +59,7 @@ function registerChatHandlers(deps) {
                 conversationKey: conversationKeyFor(me, to),
                 replyTo,
                 reactions: [],
+                clientId: storableClientId(payload.clientId),
             });
 
             const wire = {

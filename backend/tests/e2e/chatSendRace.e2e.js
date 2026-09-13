@@ -286,6 +286,63 @@ test('a message sent while history loads stays on screen', { timeout: 180_000 },
         assert.equal(copies, 1, 'the stored message should appear exactly once after a reload');
     });
 
+    await t.test('(e) a lost acknowledgement heals on the next history refetch: one copy, no Not sent', { timeout: 60_000 }, async () => {
+        const { context, page } = await newPage('e');
+        const text = `ack never arrives ${Date.now()}`;
+        const dropped = { acks: 0 };
+
+        // The server stores and confirms it; only the confirmation to this page is lost.
+        await context.routeWebSocket(/\/socket\.io\//, (ws) => {
+            const server = ws.connectToServer();
+            ws.onMessage((message) => server.send(message));
+            server.onMessage((message) => {
+                if (typeof message === 'string' && message.includes('"message:sent"') && message.includes(text)) {
+                    dropped.acks++;
+                    return;
+                }
+                ws.send(message);
+            });
+        });
+
+        const nav = page.locator('nav[aria-label="Chamber sections"]');
+        const log = page.locator(LOG);
+
+        await session.enterChamber(page, HIM, HIS_PASSWORD);
+        await nav.locator('[aria-label="Chat"]').click();
+        await page.locator('li button').filter({ hasText: HER }).first().click();
+        await log.getByText(LAST_SEED, { exact: true }).first().waitFor({ timeout: 10_000 });
+        await page.waitForTimeout(500);
+
+        await watchLog(page, text);
+        const composer = page.locator('textarea[placeholder="Say something"]');
+        await composer.fill(text);
+        await composer.press('Enter');
+        const sentAt = Date.now();
+
+        // The lost acknowledgement leaves the stored message marked Not sent.
+        let seen = await readWatch(page);
+        while (!seen.notSent && Date.now() < sentAt + 13_000) {
+            await sleep(200);
+            seen = await readWatch(page);
+        }
+        assert.ok(dropped.acks > 0, 'the acknowledgement should have been dropped');
+        assert.equal(await storedCopies(text), 1, 'the server should still have stored it');
+        assert.equal(seen.notSent, true, 'without its acknowledgement the message is marked Not sent');
+        assert.equal(seen.copies, 1);
+
+        // Away and back, no reload: the conversation remounts and refetches its stale history.
+        await nav.locator('button:not([aria-label="Chat"]):not([aria-label="More"])').first().click();
+        await page.waitForTimeout(400);
+        await nav.locator('[aria-label="Chat"]').click();
+        await log.getByText(LAST_SEED, { exact: true }).first().waitFor({ timeout: 10_000 });
+        await page.waitForTimeout(2500);
+
+        seen = await readWatch(page);
+        assert.equal(seen.copies, 1, 'the message should appear exactly once after the refetch');
+        assert.equal(seen.notSent, false, 'the stored copy should replace the false Not sent');
+        assert.equal(seen.maxCopies, 1, 'it should never have been shown twice');
+    });
+
     await t.test('(d) nothing threw', () => {
         assert.deepEqual(pageErrors, []);
     });

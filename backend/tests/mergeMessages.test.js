@@ -194,6 +194,59 @@ test('an ack with no local copy (another tab, a photo) is added in order', () =>
     assert.deepEqual(ids(reconciled), ['s1', 'r5', 's9']);
 });
 
+test('a snapshot carrying my clientId replaces a failed local copy: one copy, no flags', () => {
+    let local = insertMessage([], optimistic('c1', 10, 'did this go?'));
+    local = markMessageFailed(local, 'c1');
+
+    // The ack was lost, but the server stored it; history now returns its clientId.
+    const merged = mergeHistory(local, [fromHer('s1', 1), fromMe('r1', 11, { text: 'did this go?', clientId: 'c1' })]);
+
+    assert.deepEqual(ids(merged), ['s1', 'r1']);
+    assert.equal(copiesOf(merged, 'did this go?'), 1);
+    assert.ok(!merged[1].pending && !merged[1].failed, 'no Not sent once the server has it');
+});
+
+test('a failed local copy whose clientId is not in the snapshot survives, beside stored ones that carry others', () => {
+    let local = insertMessage([], optimistic('c1', 10, 'really lost'));
+    local = markMessageFailed(local, 'c1');
+
+    const merged = mergeHistory(local, [
+        fromMe('r0', 1, { clientId: 'c0' }),
+        fromHer('s2', 20, { clientId: 'her-device-1' }),
+    ]);
+
+    assert.deepEqual(ids(merged), ['r0', 'c1', 's2']);
+    assert.equal(merged[1].failed, true);
+});
+
+test('her stored message never replaces my pending copy, even with the same clientId', () => {
+    const local = insertMessage([], optimistic('same-id', 10, 'mine'));
+    const merged = mergeHistory(local, [fromHer('s1', 5, { clientId: 'same-id', text: 'hers' })]);
+
+    assert.deepEqual(ids(merged), ['s1', 'same-id']);
+    assert.equal(merged[1].pending, true);
+});
+
+test('two stored messages that share a clientId are both kept', () => {
+    const snapshot = [fromMe('r1', 1, { clientId: 'reused' }), fromMe('r2', 2, { clientId: 'reused' })];
+
+    assert.deepEqual(ids(mergeHistory([], snapshot)), ['r1', 'r2']);
+});
+
+test('an ack only reconciles my own copy, not her message with the same clientId', () => {
+    const local = [fromHer('s1', 1, { clientId: 'same-id' }), optimistic('same-id', 5, 'mine')];
+    const reconciled = reconcileMessage(local, ack('r5', 'same-id', 5, 'mine'));
+
+    assert.deepEqual(ids(reconciled), ['s1', 'r5']);
+    assert.equal(reconciled[0].text, 'text s1');
+});
+
+test('her live message is added even if its clientId matches one of mine', () => {
+    const local = [optimistic('same-id', 5)];
+
+    assert.deepEqual(ids(insertMessage(local, fromHer('s6', 6, { clientId: 'same-id' }))), ['same-id', 's6']);
+});
+
 test('a live message already present by _id or clientId is not added twice', () => {
     const local = [fromHer('s1', 1), optimistic('c2', 2)];
 

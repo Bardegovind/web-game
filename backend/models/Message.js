@@ -45,6 +45,13 @@ const messageSchema = new mongoose.Schema({
      */
     replyTo: { type: replySnapshotSchema, default: null },
     /**
+     * The id the sender's device gave this message before it was stored.
+     * History returns it, so the copy already on the sender's screen can be
+     * matched to the stored one even when the acknowledgement was lost.
+     * Absent on messages written before this field existed.
+     */
+    clientId: String,
+    /**
      * The two participants, lowercased and sorted. Lets one indexed equality
      * match replace an $or across both directions, which an index can only
      * half-serve. Backfilled for messages written before this field existed.

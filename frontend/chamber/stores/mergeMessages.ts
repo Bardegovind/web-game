@@ -16,16 +16,45 @@ function ordered(messages: Message[]): Message[] {
     return messages.slice().sort((a, b) => time(a) - time(b));
 }
 
-/** The first copy of each message wins; a later one with the same _id or clientId is dropped. */
-function withoutDuplicates(messages: Message[]): Message[] {
-    const seen = new Set<string>();
-    return messages.filter((m) => {
-        const keys = [`id:${m._id}`];
-        if (m.clientId) keys.push(`client:${m.clientId}`);
-        if (keys.some((key) => seen.has(key))) return false;
-        keys.forEach((key) => seen.add(key));
-        return true;
-    });
+/**
+ * A clientId is only unique on the device that made it, so it names a message
+ * together with its sender. History carries both people's clientIds.
+ */
+function clientKey(message: Message): string | null {
+    return message.clientId ? JSON.stringify([message.sender, message.clientId]) : null;
+}
+
+function sameClientMessage(a: Message, b: Message): boolean {
+    const key = clientKey(a);
+    return key !== null && key === clientKey(b);
+}
+
+/**
+ * Every server message is kept (each has its own _id). A local message is
+ * dropped when the server, or a local message before it, already has it by
+ * _id or by sender and clientId.
+ */
+function combine(server: Message[], local: Message[]): Message[] {
+    const ids = new Set<string>();
+    const clientKeys = new Set<string>();
+    const result: Message[] = [];
+
+    const keep = (message: Message) => {
+        ids.add(message._id);
+        const key = clientKey(message);
+        if (key) clientKeys.add(key);
+        result.push(message);
+    };
+
+    for (const message of server) {
+        if (!ids.has(message._id)) keep(message);
+    }
+    for (const message of local) {
+        const key = clientKey(message);
+        if (ids.has(message._id) || (key && clientKeys.has(key))) continue;
+        keep(message);
+    }
+    return result;
 }
 
 /** The stored message, without the flags that only mean something while waiting on the server. */
@@ -36,10 +65,10 @@ function confirmed(message: Message): Message {
     return copy;
 }
 
-/** Chronological, and never the same message twice — by its _id or its clientId. */
+/** Chronological, and never the same message twice — by its _id, or its sender and clientId. */
 export function insertMessage(existing: Message[], message: Message): Message[] {
     const alreadyHere = existing.some(
-        (m) => (message._id && m._id === message._id) || (message.clientId && m.clientId === message.clientId)
+        (m) => (message._id && m._id === message._id) || sameClientMessage(m, message)
     );
     if (alreadyHere) return existing;
     return ordered([...existing, message]);
@@ -50,37 +79,31 @@ export function insertMessage(existing: Message[], message: Message): Message[] 
  *
  * The snapshot may be older than the local list: it was queried before a
  * message was sent, confirmed or heard live. So the server's copy wins for
- * every message it holds (matched by _id, or by clientId when it carries one),
- * and a local message it does not hold is kept when it is still waiting
- * (pending), failed, or no older than the snapshot's newest message. A
- * confirmed message older than that, which the server no longer returns, is
- * dropped, as a replace would have done.
+ * every message it holds — matched by _id, or by sender and clientId, which
+ * history returns — and drops the local copy's pending or failed flag. A
+ * local message it does not hold is kept when it is still waiting (pending),
+ * failed, or no older than the snapshot's newest message. A confirmed message
+ * older than that, which the server no longer returns, is dropped, as a
+ * replace would have done.
  */
 export function mergeHistory(local: Message[], snapshot: Message[]): Message[] {
-    const serverIds = new Set(snapshot.map((m) => m._id));
-    const serverClientIds = new Set(snapshot.map((m) => m.clientId).filter(Boolean));
     const newest = snapshot.reduce((latest, m) => Math.max(latest, time(m)), -Infinity);
-
-    const notYetInHistory = local.filter((m) => {
-        if (serverIds.has(m._id)) return false;
-        if (m.clientId && serverClientIds.has(m.clientId)) return false;
-        return Boolean(m.pending) || Boolean(m.failed) || time(m) >= newest;
-    });
-
-    return ordered(withoutDuplicates([...snapshot, ...notYetInHistory]));
+    const notYetInHistory = local.filter(
+        (m) => Boolean(m.pending) || Boolean(m.failed) || time(m) >= newest
+    );
+    return ordered(combine(snapshot, notYetInHistory));
 }
 
 /**
  * The server confirmed a message this client sent (the acknowledgement, or
- * the echo to its own room). The local copy with the same clientId becomes
- * the stored message — or, when the stored message is already here because
- * history brought it in, the local copy is removed rather than kept beside it.
+ * the echo to its own room). The local copy with the same sender and clientId
+ * becomes the stored message — or, when the stored message is already here
+ * because history brought it in, the local copy is removed rather than kept
+ * beside it.
  */
 export function reconcileMessage(current: Message[], message: Message): Message[] {
     const storedIndex = current.findIndex((m) => m._id === message._id);
-    const localIndex = message.clientId
-        ? current.findIndex((m, i) => i !== storedIndex && m.clientId === message.clientId)
-        : -1;
+    const localIndex = current.findIndex((m, i) => i !== storedIndex && sameClientMessage(m, message));
 
     if (localIndex === -1) return insertMessage(current, message);
     if (storedIndex !== -1) return current.filter((_, i) => i !== localIndex);
