@@ -44,7 +44,19 @@ function createDailyService(deps) {
         const existing = await Question.findOne({ day });
         if (existing) return existing;
 
-        return Question.create({ day, text: pickForDay(prompts, day), answers: [] });
+        try {
+            return await Question.create({ day, text: pickForDay(prompts, day), answers: [] });
+        } catch (error) {
+            // Entering the chamber asks for Today and the question at once, so
+            // on the first entry of a day two requests can both find nothing
+            // and both create. The unique index on `day` lets one win; the
+            // other reads what it made.
+            if (error && error.code === 11000) {
+                const created = await Question.findOne({ day });
+                if (created) return created;
+            }
+            throw error;
+        }
     }
 
     async function answerToday({ username, text }) {
