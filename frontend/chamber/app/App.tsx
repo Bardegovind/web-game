@@ -20,6 +20,7 @@ import { directionBetween, sectionFor, type Screen, type Section } from './navig
 import { ScreenStage } from './ScreenStage';
 import { prefetchChamber } from './prefetch';
 
+import type { Conversation as ConversationSummary } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
 import { useConversations, conversationsKey } from '../hooks/useConversations';
@@ -49,6 +50,13 @@ export function App() {
 
     const notifierRef = useRef<PresenceNotifier | null>(null);
 
+    // The socket callbacks are registered once per visit, so they read the
+    // current screen through a ref.
+    const screenRef = useRef(screen);
+    useEffect(() => {
+        screenRef.current = screen;
+    }, [screen]);
+
     // One notifier per visit. It decides; Sonner shows.
     useEffect(() => {
         if (!isInside || !username) return;
@@ -66,17 +74,24 @@ export function App() {
             },
         });
 
+        // Coming back in the same page, the last visit's list is already
+        // cached and may never change reference again, so the new notifier
+        // learns from it now rather than waiting for a change.
+        const cached = queryClient.getQueryData<ConversationSummary[]>(conversationsKey);
+        if (cached) notifier.seed(cached);
+
         notifierRef.current = notifier;
         return () => {
             notifier.dispose();
             notifierRef.current = null;
         };
-    }, [isInside, username]);
+    }, [isInside, username, queryClient]);
 
-    // Whoever is already here when she enters is known, not announced.
+    // Whoever is already here when she enters is known, not announced, and
+    // every newer list corrects what an older one said.
     useEffect(() => {
         if (conversations) notifierRef.current?.seed(conversations);
-    }, [conversations]);
+    }, [conversations, isInside, username]);
 
     // Every screen's data loads on entry, so no tab opens onto a placeholder.
     useEffect(() => {
@@ -89,15 +104,46 @@ export function App() {
         setSocketCallbacks({
             onMessage: (message) => {
                 addMessage(message.sender, message);
+
+                // Her open conversation reads this the moment it lands, and
+                // that read refreshes the list and the badge. Refreshing them
+                // here as well would race the read and flash a count for a
+                // message already on screen.
+                const beingRead =
+                    screenRef.current === 'chat' && useChatStore.getState().activePeer === message.sender;
+                if (beingRead) return;
+
                 queryClient.invalidateQueries({ queryKey: conversationsKey });
                 queryClient.invalidateQueries({ queryKey: todayKey });
             },
             onRead: () => queryClient.invalidateQueries({ queryKey: conversationsKey }),
             onPresence: (update) => notifierRef.current?.handle(update),
+            onOnlineList: (usernames) => {
+                // The server's word on who is here now: anyone else in the
+                // conversations list is not.
+                const here = new Set(usernames);
+                const everyone = queryClient.getQueryData<ConversationSummary[]>(conversationsKey) ?? [];
+                notifierRef.current?.seed([
+                    ...usernames.map((name) => ({ username: name, isOnline: true })),
+                    ...everyone
+                        .filter((conversation) => !here.has(conversation.username))
+                        .map((conversation) => ({ username: conversation.username, isOnline: false })),
+                ]);
+            },
             onResync: () => {
+                // A new connection. What the last one heard live may no longer
+                // be true, so the lists fetched for this one may correct it;
+                // anything heard live from here on still wins.
+                notifierRef.current?.reset();
+
                 // Whatever arrived while the socket was away is fetched rather
                 // than guessed at.
-                queryClient.invalidateQueries({ queryKey: conversationsKey });
+                const listFetchedAt = queryClient.getQueryState(conversationsKey)?.dataUpdatedAt;
+                void queryClient.invalidateQueries({ queryKey: conversationsKey }).then(() => {
+                    const list = queryClient.getQueryState<ConversationSummary[]>(conversationsKey);
+                    // A refetch that failed leaves the old list, which is no news.
+                    if (list?.data && list.dataUpdatedAt !== listFetchedAt) notifierRef.current?.seed(list.data);
+                });
                 queryClient.invalidateQueries({ queryKey: todayKey });
                 const peer = useChatStore.getState().activePeer;
                 if (peer) queryClient.invalidateQueries({ queryKey: messagesKey(peer) });

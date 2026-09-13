@@ -178,3 +178,91 @@ test('names are compared without regard to capitals', () => {
 
     assert.deepEqual(notices, [{ kind: 'arrived', username: 'radhe' }]);
 });
+
+/*
+ * Leaving and coming back in the same page, and reconnecting, both hand the
+ * notifier a newer list. What follows is how a newer list, a live event and a
+ * reset settle between them.
+ */
+
+test('a list never announces anyone, whatever it says', () => {
+    const { notifier, notices, clock } = setup();
+
+    notifier.seed([online('radhe')]);
+    notifier.seed([offline('radhe')]);
+    notifier.seed([online('radhe')]);
+    clock.advance(10000);
+
+    assert.deepEqual(notices, []);
+});
+
+test('a newer list replaces what an older list said', () => {
+    const { notifier, notices } = setup();
+
+    notifier.seed([online('radhe')]);   // cached from an earlier visit
+    notifier.seed([offline('radhe')]);  // fetched now: she has gone
+    notifier.handle(online('radhe'));   // she really arrives
+
+    assert.deepEqual(notices, [{ kind: 'arrived', username: 'radhe' }]);
+});
+
+test('after a reset, a list can correct what the old connection heard live', () => {
+    const { notifier, notices } = setup();
+
+    notifier.handle(online('radhe'));   // heard live, announced
+    notifier.reset();                   // reconnected; she left while it was away
+    notifier.seed([offline('radhe')]);
+    notifier.handle(online('radhe'));   // she comes back
+
+    assert.deepEqual(notices, [
+        { kind: 'arrived', username: 'radhe' },
+        { kind: 'arrived', username: 'radhe' },
+    ]);
+});
+
+test('a live event after a reset still beats a later list', () => {
+    const { notifier, notices } = setup();
+
+    notifier.seed([online('radhe')]);
+    notifier.reset();
+    notifier.handle(online('radhe'));   // live, on the new connection: another tab
+    notifier.seed([offline('radhe')]);  // a list read before that
+    notifier.handle(online('radhe'));   // yet another tab
+
+    assert.deepEqual(notices, []);
+});
+
+test('listed as here after a reset cancels a departure that was still waiting', () => {
+    const { notifier, notices, clock } = setup();
+
+    notifier.seed([online('radhe')]);
+    notifier.handle(offline('radhe'));  // the grace period starts
+    notifier.reset();                   // the connection drops and returns...
+    notifier.seed([online('radhe')]);   // ...and she is back
+    clock.advance(10000);
+
+    assert.deepEqual(notices, []);
+});
+
+test('listed as gone after a reset still announces a departure once the grace period ends', () => {
+    const { notifier, notices, clock } = setup();
+
+    notifier.seed([online('radhe')]);
+    notifier.handle(offline('radhe'));
+    notifier.reset();
+    notifier.seed([offline('radhe')]);
+
+    clock.advance(4999);
+    assert.deepEqual(notices, []);
+    clock.advance(1);
+    assert.deepEqual(notices, [{ kind: 'left', username: 'radhe' }]);
+});
+
+test('your own name in a list is ignored', () => {
+    const { notifier, notices } = setup();
+
+    notifier.seed([offline('govind'), online('Govind')]);
+    notifier.handle(online('govind'));
+
+    assert.deepEqual(notices, []);
+});

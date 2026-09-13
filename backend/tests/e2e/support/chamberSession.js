@@ -60,16 +60,19 @@ function createChamberSession({ port, mongoUri, jwtSecret }) {
         throw new Error(`server on ${port} did not become healthy`);
     }
 
+    /** Kills the server. Resolves once the process has gone, so the port is free again. */
     function stopServer() {
-        if (child) child.kill('SIGKILL');
+        const stopping = child;
         child = null;
+        if (!stopping || stopping.exitCode !== null || stopping.signalCode !== null) return Promise.resolve();
+
+        const exited = new Promise((resolve) => stopping.once('exit', resolve));
+        stopping.kill('SIGKILL');
+        return exited;
     }
 
     /** The frozen ritual with real pointer input, the password, and the entrance. */
-    async function enterChamber(page, username, password) {
-        await page.goto(BASE);
-        await page.waitForSelector('#board .cell');
-
+    async function ritual(page, username, password) {
         for (const [zone, times] of [[1, 16], [2, 3], [3, 7]]) {
             const box = await page.locator(`[data-tap="${zone}"]`).boundingBox();
             assert.ok(box, `corner ${zone} should be laid out`);
@@ -86,6 +89,23 @@ function createChamberSession({ port, mongoUri, jwtSecret }) {
 
         await page.waitForSelector('text=ours', { timeout: 8000 });
         await page.waitForTimeout(1600); // the entrance plays once
+    }
+
+    /** Loads the game and walks in. */
+    async function enterChamber(page, username, password) {
+        await page.goto(BASE);
+        await page.waitForSelector('#board .cell');
+        await ritual(page, username, password);
+    }
+
+    /**
+     * Walks back in from the game screen of a page that has already been
+     * inside, without reloading — the way a phone comes back after the
+     * chamber closed itself. The stores and the query cache carry over.
+     */
+    async function reenterChamber(page, username, password) {
+        await page.waitForSelector('#game-view.active', { timeout: 4000 });
+        await ritual(page, username, password);
     }
 
     /** Another person, connected over a real socket. */
@@ -107,7 +127,7 @@ function createChamberSession({ port, mongoUri, jwtSecret }) {
 
     return {
         BASE, HER, HER_PASSWORD, HIM, HIS_PASSWORD,
-        resetDatabase, startServer, stopServer, enterChamber, connectPerson,
+        resetDatabase, startServer, stopServer, enterChamber, reenterChamber, connectPerson,
     };
 }
 

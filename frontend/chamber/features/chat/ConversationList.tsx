@@ -28,6 +28,7 @@ export function ConversationList({
     onSelect: (peer: string) => void;
 }) {
     const online = usePresenceStore((s) => s.online);
+    const listedOnline = usePresenceStore((s) => s.listedOnline);
     const typingFrom = usePresenceStore((s) => s.typingFrom);
 
     if (isLoading) {
@@ -50,7 +51,7 @@ export function ConversationList({
     return (
         <ul className="chamber-scroll min-h-0 flex-1 overflow-y-auto p-2">
             {conversations.map((conversation) => {
-                const isOnline = isPeerOnline(online[conversation.username], conversation.isOnline);
+                const isOnline = isPeerOnline(conversation.username, { online, listedOnline }, conversation.isOnline);
                 const isActive = activePeer === conversation.username;
                 const isTyping = typingFrom[conversation.username] ?? false;
 

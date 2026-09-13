@@ -121,7 +121,7 @@ frontend/
       prefetch.ts       loads every screen's data on entry
     components/ui/      shadcn/ui components, themed to the chamber
     lib/utils.ts        cn(): merges Tailwind classes
-    presence/           pure: when to say "is here" and "left"
+    presence/           pure: when to announce arrivals, and who counts as online
     features/           chat, memories, today, letters, story, bucket
     stores/             Zustand: auth, chat, presence
     hooks/              TanStack Query: every screen's data

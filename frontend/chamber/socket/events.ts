@@ -21,6 +21,12 @@ export const EVENTS = {
     REACTION_UPDATED: 'reaction:updated',
 
     PRESENCE_UPDATE: 'presence:update',
+
+    // Named for the vanilla client. The server sends it to each connection as
+    // it opens (and again whenever someone comes or goes): everyone stored as
+    // online right now. The chamber rebuilds presence from it after a
+    // (re)connect.
+    LEGACY_USERS_ONLINE: 'users:online',
 } as const;
 
 export type SocketEvent = (typeof EVENTS)[keyof typeof EVENTS];

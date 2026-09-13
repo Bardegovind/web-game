@@ -82,6 +82,34 @@ async function chatBadge(page) {
     return match ? Number(match[0]) : null;
 }
 
+/**
+ * Watches the Chat badge from inside the page: sampled every 100 ms, and on
+ * every change to the bar in between, so a count that is on screen for only a
+ * moment is still caught. Returns a function that stops watching and gives
+ * back every number seen.
+ */
+async function watchChatBadge(page) {
+    await page.evaluate(() => {
+        const nav = document.querySelector('nav[aria-label="Chamber sections"]');
+        window.__badgeNumbers = [];
+        const look = () => {
+            const button = nav.querySelector('[aria-label="Chat"]');
+            const match = ((button && button.textContent) || '').match(/\d+/);
+            if (match) window.__badgeNumbers.push(Number(match[0]));
+        };
+        window.__badgeObserver = new MutationObserver(look);
+        window.__badgeObserver.observe(nav, { childList: true, subtree: true, characterData: true });
+        window.__badgeSampler = setInterval(look, 100);
+    });
+
+    return () =>
+        page.evaluate(() => {
+            window.__badgeObserver.disconnect();
+            clearInterval(window.__badgeSampler);
+            return window.__badgeNumbers.slice();
+        });
+}
+
 test('the Chat badge clears when you read, and the header agrees about who is online', { timeout: 120_000 }, async (t) => {
     if (!(await isReachable(MONGO_URI))) return t.skip(SKIP_MESSAGE);
     if (!fs.existsSync(DIST)) return t.skip('needs a built frontend: cd frontend && npm run build');
@@ -94,7 +122,7 @@ test('the Chat badge clears when you read, and the header agrees about who is on
 
     t.after(async () => {
         await browser.close();
-        session.stopServer();
+        await session.stopServer();
     });
 
     // radhe's socket connects before govind ever enters, and stays open
@@ -125,6 +153,21 @@ test('the Chat badge clears when you read, and the header agrees about who is on
     phonePage.on('pageerror', (error) => pageErrors.push(`[phone] ${error.message}`));
     t.after(() => phoneContext.close());
 
+    // Every socket frame passes straight through, except that read receipts
+    // can be held back on demand, as a slow phone network would.
+    let socketReadDelayMs = 0;
+    await phonePage.routeWebSocket(/\/socket\.io\//, (ws) => {
+        const server = ws.connectToServer();
+        ws.onMessage((message) => {
+            if (socketReadDelayMs && typeof message === 'string' && message.includes('"message:read"')) {
+                setTimeout(() => server.send(message), socketReadDelayMs);
+            } else {
+                server.send(message);
+            }
+        });
+        server.onMessage((message) => ws.send(message));
+    });
+
     await t.test('opening the conversation clears the Chat badge', { timeout: 30_000 }, async () => {
         await session.enterChamber(phonePage, HIM, HIS_PASSWORD);
 
@@ -147,21 +190,37 @@ test('the Chat badge clears when you read, and the header agrees about who is on
         );
     });
 
-    await t.test("messages arriving while you read don't raise the badge", { timeout: 20_000 }, async () => {
+    await t.test("messages arriving while you read never raise the badge, even for a moment", { timeout: 30_000 }, async () => {
         const log = phonePage.locator('[role="log"][aria-label="Messages"]');
 
-        await withTimeout(
-            (async () => {
-                await sendAndWait(herSocket, { receiver: HIM, text: 'while you read 1', type: 'text', clientId: 'live-1' });
-                await sendAndWait(herSocket, { receiver: HIM, text: 'while you read 2', type: 'text', clientId: 'live-2' });
-            })(),
-            15_000,
-            'sending the 2 live messages timed out'
-        );
+        // The read lands slowly, as it can on a phone network. Until it does,
+        // nothing else may refresh the badge from a count that still includes
+        // the message on screen.
+        const READ = '**/chat/read/**';
+        await phonePage.route(READ, async (route) => {
+            await new Promise((r) => setTimeout(r, 400));
+            await route.continue();
+        });
+        socketReadDelayMs = 400;
 
-        await log.getByText('while you read 1').first().waitFor({ timeout: 8000 });
-        await log.getByText('while you read 2').first().waitFor({ timeout: 8000 });
-        await phonePage.waitForTimeout(1500);
+        try {
+            for (const [i, text] of ['while you read 1', 'while you read 2'].entries()) {
+                const stopWatching = await watchChatBadge(phonePage);
+
+                await withTimeout(
+                    sendAndWait(herSocket, { receiver: HIM, text, type: 'text', clientId: `live-${i + 1}` }),
+                    8000,
+                    `sending "${text}" timed out`
+                );
+                await log.getByText(text).first().waitFor({ timeout: 8000 });
+                await phonePage.waitForTimeout(1500);
+
+                const numbers = await stopWatching();
+                assert.deepEqual(numbers, [], `the Chat badge showed a number in the 1.5s after "${text}" arrived`);
+            }
+        } finally {
+            await phonePage.unroute(READ);
+        }
 
         assert.equal(
             await chatBadge(phonePage),
@@ -225,4 +284,68 @@ test('the Chat badge clears when you read, and the header agrees about who is on
     await t.test('nothing threw', () => {
         assert.deepEqual(pageErrors, []);
     });
+});
+
+test('her very first message is read when the conversation is already open', { timeout: 60_000 }, async (t) => {
+    if (!(await isReachable(MONGO_URI))) return t.skip(SKIP_MESSAGE);
+    if (!fs.existsSync(DIST)) return t.skip('needs a built frontend: cd frontend && npm run build');
+
+    // A fresh database: he has written to her, and she has never written to him.
+    await session.resetDatabase();
+    await session.startServer();
+
+    const browser = await chromium.launch({ executablePath: CHROME });
+    const sockets = [];
+    const pageErrors = [];
+
+    t.after(async () => {
+        sockets.forEach((s) => s.close());
+        await browser.close();
+        await session.stopServer();
+    });
+
+    const hisSocket = await withTimeout(session.connectPerson(HIM, HIS_PASSWORD), 10_000, 'his socket did not connect');
+    sockets.push(hisSocket);
+    await withTimeout(
+        sendAndWait(hisSocket, { receiver: HER, text: 'are you there?', type: 'text', clientId: 'his-first' }),
+        8000,
+        'his first message was not confirmed'
+    );
+
+    const herSocket = await withTimeout(session.connectPerson(HER, HER_PASSWORD), 10_000, 'her socket did not connect');
+    sockets.push(herSocket);
+
+    const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await context.newPage();
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+
+    await session.enterChamber(page, HIM, HIS_PASSWORD);
+    await page.locator('nav[aria-label="Chamber sections"] [aria-label="Chat"]').click();
+    await page.locator('li button').filter({ hasText: HER }).first().click();
+
+    const log = page.locator('[role="log"][aria-label="Messages"]');
+    await log.getByText('are you there?').first().waitFor({ timeout: 8000 });
+    await page.waitForTimeout(500);
+
+    await t.test('the badge shows no number after she writes for the first time', { timeout: 20_000 }, async () => {
+        const stopWatching = await watchChatBadge(page);
+
+        await withTimeout(
+            sendAndWait(herSocket, { receiver: HIM, text: 'here, always', type: 'text', clientId: 'her-first' }),
+            8000,
+            'her first message was not confirmed'
+        );
+        await log.getByText('here, always').first().waitFor({ timeout: 8000 });
+        await page.waitForTimeout(1500);
+
+        const numbers = await stopWatching();
+        assert.equal(await chatBadge(page), null, 'her first message was on screen as it arrived, so it is read');
+        assert.deepEqual(numbers, [], 'and the badge never showed a number meanwhile');
+    });
+
+    await t.test('nothing threw', () => {
+        assert.deepEqual(pageErrors, []);
+    });
+
+    await context.close();
 });

@@ -12,6 +12,8 @@ export interface SocketCallbacks {
     onRead?: (receipt: ReadReceipt) => void;
     onResync?: () => void;
     onPresence?: (update: PresencePayload) => void;
+    /** Who the server says is online: sent as each connection opens, and whenever someone comes or goes. */
+    onOnlineList?: (usernames: string[]) => void;
 }
 
 let callbacks: SocketCallbacks = {};
@@ -29,7 +31,12 @@ export function connectSocket(token: string): Socket {
     socket = io({ auth: { token } });
 
     socket.on('connect', () => {
-        usePresenceStore.getState().setConnection('online');
+        const state = usePresenceStore.getState();
+        // While the socket was away it may have missed someone leaving,
+        // arriving or stopping typing. A new connection starts from what the
+        // server says now, not from what the old one heard.
+        state.resetLive();
+        state.setConnection('online');
         // Anything that arrived while the socket was down is re-fetched rather
         // than assumed lost or duplicated.
         callbacks.onResync?.();
@@ -42,6 +49,12 @@ export function connectSocket(token: string): Socket {
     socket.on(EVENTS.PRESENCE_UPDATE, (payload: PresencePayload) => {
         usePresenceStore.getState().setOnline(payload.username, payload.isOnline);
         callbacks.onPresence?.(payload);
+    });
+
+    socket.on(EVENTS.LEGACY_USERS_ONLINE, (users: Array<{ username: string }>) => {
+        const usernames = Array.isArray(users) ? users.map((user) => user.username) : [];
+        usePresenceStore.getState().setListedOnline(usernames);
+        callbacks.onOnlineList?.(usernames);
     });
 
     socket.on(EVENTS.MESSAGE_NEW, (message: Message) => callbacks.onMessage?.(message));
@@ -73,10 +86,18 @@ export function connectSocket(token: string): Socket {
     return socket;
 }
 
+/**
+ * Every way out of the chamber ends here: the Leave button calls it, and the
+ * auto-exit when the page is hidden (`chamber:exit`) unmounts the socket
+ * effect, whose cleanup calls it. Nothing heard on this visit carries into the
+ * next one.
+ */
 export function disconnectSocket(): void {
     socket?.disconnect();
     socket = null;
-    usePresenceStore.getState().setConnection('offline');
+    const state = usePresenceStore.getState();
+    state.resetLive();
+    state.setConnection('offline');
 }
 
 export function sendMessage(payload: {

@@ -29,14 +29,15 @@ export function Conversation({
 }: {
     peer: string;
     lastSeen: string | null;
-    /** The conversations list's last-known value, used only until a live socket update arrives. */
+    /** The conversations list's last-known value, used only until the socket has said. */
     storedOnline?: boolean;
     onBack: () => void;
     onOpenImage: (url: string) => void;
 }) {
     const me = useAuthStore((s) => s.username);
-    const liveOnline = usePresenceStore((s) => s.online[peer]);
-    const isOnline = isPeerOnline(liveOnline, storedOnline);
+    const online = usePresenceStore((s) => s.online);
+    const listedOnline = usePresenceStore((s) => s.listedOnline);
+    const isOnline = isPeerOnline(peer, { online, listedOnline }, storedOnline);
     const isTyping = usePresenceStore((s) => s.typingFrom[peer]);
     const queryClient = useQueryClient();
     const markRead = useMarkRead();
@@ -48,6 +49,12 @@ export function Conversation({
     const listRef = useRef<HTMLDivElement>(null);
     const [replyingTo, setReplyingTo] = useState<Message | null>(null);
 
+    /** Tells the server this conversation has been read, over both paths it listens on. */
+    function markConversationRead() {
+        sendRead(peer);
+        markRead.mutate(peer);
+    }
+
     // Server history seeds the store; live messages are appended to it.
     useEffect(() => {
         if (data) setMessages(peer, data);
@@ -55,16 +62,14 @@ export function Conversation({
 
     // Opening a conversation is reading it.
     useEffect(() => {
-        sendRead(peer);
-        markRead.mutate(peer);
+        markConversationRead();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [peer]);
 
     const messages = stored ?? data ?? [];
 
     // The id of the newest message she sent us, so a fresh arrival can be
-    // told apart from the batch that was already here when this
-    // conversation opened.
+    // told apart from what was already here when this conversation opened.
     const latestIncomingId = useMemo(() => {
         for (let i = messages.length - 1; i >= 0; i--) {
             const message = messages[i];
@@ -73,29 +78,28 @@ export function Conversation({
         return null;
     }, [messages, peer]);
 
-    const seenIncomingIdRef = useRef<string | null>(null);
-    const pendingWhileHiddenRef = useRef(false);
+    // The newest of her messages that was already here when this conversation
+    // opened — null if she had never written — or undefined until its history
+    // has loaded and that is known.
+    const seenIncomingIdRef = useRef<string | null | undefined>(undefined);
+    const historyLoaded = !isLoading;
 
-    // A new peer means the "opening a conversation is reading it" effect
-    // above already marked this one read; forget what we were tracking so
-    // its first batch of messages isn't treated as "arrived while already
-    // reading".
     useEffect(() => {
-        seenIncomingIdRef.current = null;
-        pendingWhileHiddenRef.current = false;
+        seenIncomingIdRef.current = undefined;
     }, [peer]);
 
-    // A message from her that arrives while this conversation is already
-    // open is read the same way opening it is — but at most once per new
-    // latest message, and only while the page is actually visible. One that
-    // arrives while the tab is hidden waits for the visibilitychange effect
-    // below.
+    // A message from her that arrives while this conversation is open is read
+    // the same way opening it is, at most once per new latest message. Only
+    // the history that was here on opening is skipped (the opening effect read
+    // it) — her very first message is not history.
+    //
+    // No hidden-page catch-up is needed: chamber.js closes the chamber the
+    // moment the page is hidden, which unmounts this. The visible check only
+    // covers the instant in between.
     useEffect(() => {
-        if (!latestIncomingId) return;
+        if (!historyLoaded) return;
 
-        if (seenIncomingIdRef.current === null) {
-            // First observation for this peer: the opening effect already
-            // marked it read, so skip it here.
+        if (seenIncomingIdRef.current === undefined) {
             seenIncomingIdRef.current = latestIncomingId;
             return;
         }
@@ -103,28 +107,9 @@ export function Conversation({
         if (latestIncomingId === seenIncomingIdRef.current) return;
         seenIncomingIdRef.current = latestIncomingId;
 
-        if (document.visibilityState === 'visible') {
-            sendRead(peer);
-            markRead.mutate(peer);
-        } else {
-            pendingWhileHiddenRef.current = true;
-        }
+        if (document.visibilityState === 'visible') markConversationRead();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [latestIncomingId]);
-
-    // Catches up on anything that arrived while the tab was hidden.
-    useEffect(() => {
-        function onVisibilityChange() {
-            if (document.visibilityState === 'visible' && pendingWhileHiddenRef.current) {
-                pendingWhileHiddenRef.current = false;
-                sendRead(peer);
-                markRead.mutate(peer);
-            }
-        }
-        document.addEventListener('visibilitychange', onVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [peer]);
+    }, [latestIncomingId, historyLoaded]);
 
     useEffect(() => {
         const list = listRef.current;

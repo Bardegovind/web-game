@@ -6,6 +6,13 @@
  * and a phone switching apps for a second reports "offline" then "online".
  * This keeps only the real changes. Pure logic — the caller supplies the
  * timers and decides how a notice is shown.
+ *
+ * Two kinds of knowledge feed it. A list (the conversations API, or who the
+ * server says is online as a connection opens) says who is here without
+ * announcing anyone, and a newer list replaces what an older one said. A live
+ * event is fresher than any list, so no list overrides it — until `reset()`,
+ * when a new connection opens and what the old one heard may no longer be
+ * true.
  */
 
 export const LEFT_GRACE_MS = 5000;
@@ -26,8 +33,12 @@ export interface PresenceNotifierOptions {
 }
 
 export interface PresenceNotifier {
+    /** Who a list says is here. Announces nothing. */
     seed(entries: PresenceEntry[]): void;
+    /** A live presence update. */
     handle(update: PresenceEntry): void;
+    /** A new connection: the next list may correct whatever the old one heard live. */
+    reset(): void;
     dispose(): void;
 }
 
@@ -40,6 +51,9 @@ export function createPresenceNotifier(options: PresenceNotifierOptions): Presen
     /** Last settled state per person: true online, false offline. */
     const known = new Map<string, boolean>();
 
+    /** Everyone a live event has spoken for since the last reset. */
+    const heardLive = new Set<string>();
+
     /** A departure waiting out its grace period. */
     const pendingLeave = new Map<string, unknown>();
 
@@ -47,7 +61,15 @@ export function createPresenceNotifier(options: PresenceNotifierOptions): Presen
         for (const entry of entries) {
             const name = entry.username.toLowerCase();
             // A live event is fresher than any list, so it is never overridden.
-            if (name === me || known.has(name)) continue;
+            if (name === me || heardLive.has(name)) continue;
+
+            // Listed as here while a departure is still waiting: they came back
+            // while the connection was away, so the departure never happened.
+            if (entry.isOnline && pendingLeave.has(name)) {
+                cancel(pendingLeave.get(name));
+                pendingLeave.delete(name);
+            }
+
             known.set(name, entry.isOnline);
         }
     }
@@ -55,6 +77,8 @@ export function createPresenceNotifier(options: PresenceNotifierOptions): Presen
     function handle(update: PresenceEntry): void {
         const name = update.username.toLowerCase();
         if (name === me) return;
+
+        heardLive.add(name);
 
         if (update.isOnline) {
             // Back within the grace period: the departure never happened.
@@ -91,10 +115,14 @@ export function createPresenceNotifier(options: PresenceNotifierOptions): Presen
         );
     }
 
+    function reset(): void {
+        heardLive.clear();
+    }
+
     function dispose(): void {
         for (const handleId of pendingLeave.values()) cancel(handleId);
         pendingLeave.clear();
     }
 
-    return { seed, handle, dispose };
+    return { seed, handle, reset, dispose };
 }
