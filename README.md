@@ -73,9 +73,14 @@ The integration tests need a throwaway database, and the scaling test also
 wants Redis. Both skip with a clear message if they are not running:
 
 ```bash
-docker run -d --name wg-test-mongo -p 27018:27017 mongo:7
+docker run -d --name wg-test-mongo -p 27018:27017 --ulimit nofile=64000:64000 mongo:7
 docker run -d --name wg-test-redis -p 6380:6379 redis:7-alpine
 ```
+
+The `nofile` limit is not decoration. Docker hands a container a soft limit of
+1024 open files; a full serial run opens more sockets than that, and mongod
+does not degrade — it aborts mid-suite, and every test after it skips or fails
+to connect for reasons that look like anything but a file limit.
 
 **Never point the tests, or a dev server, at the production `MONGO_URI`.**
 Startup writes to the database (password seeding, the conversation-key
@@ -158,6 +163,7 @@ message:send → message:sent (to sender's tabs) + message:new (to the peer)
 message:read → message:read:ack
 typing:start / typing:stop   (server expires typing after ~3s)
 presence:update
+nudge:new                    (a heart, to the recipient's tabs)
 ```
 
 Messages carry a `clientId` that the server echoes, so a message rendered

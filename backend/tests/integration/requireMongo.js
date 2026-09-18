@@ -31,6 +31,7 @@ function isReachable(uri, timeoutMs = 1500) {
     });
 }
 
-const SKIP_MESSAGE = 'needs a test MongoDB: docker run -d --name wg-test-mongo -p 27018:27017 mongo:7';
+const SKIP_MESSAGE =
+    'needs a test MongoDB: docker run -d --name wg-test-mongo -p 27018:27017 --ulimit nofile=64000:64000 mongo:7';
 
 module.exports = { isReachable, SKIP_MESSAGE };
