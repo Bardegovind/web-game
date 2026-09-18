@@ -87,7 +87,7 @@ export function Today({
 
     return (
         <div className="chamber-scroll mx-auto min-h-0 w-full max-w-4xl flex-1 overflow-y-auto px-4 pb-24">
-            <div className="mx-auto w-full max-w-2xl pt-4">
+            <div className="pt-4">
                 <section className="pb-6">
                     {waiting.length > 0 ? (
                         <>
@@ -139,7 +139,7 @@ export function Today({
                                 type="button"
                                 variant="ghost"
                                 size="sm"
-                                className="mt-3 -ml-2"
+                                className="mt-3 -ml-4"
                                 onClick={onOpenReasons}
                             >
                                 {data.reasonOfTheDay ? 'Open the jar' : 'Write the first one'}
@@ -209,7 +209,7 @@ export function Today({
                 </div>
             </div>
 
-            <div className="mx-auto w-full max-w-2xl">
+            <div>
                 {question && (
                     <section className="glass mb-5 p-5">
                         <h2 className="font-display text-base font-bold text-chalk">Today&apos;s question</h2>

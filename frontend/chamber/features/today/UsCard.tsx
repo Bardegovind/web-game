@@ -80,10 +80,15 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
                             strokeWidth={5}
                             className="shrink-0"
                         >
-                            <span className="font-display text-[0.7rem] leading-none font-bold text-chalk">
-                                {daysAway}
+                            <span className="flex flex-col items-center leading-none">
+                                <span className="font-display text-[0.78rem] font-bold text-chalk">
+                                    {daysAway}
+                                </span>
+                                <span className="mt-0.5 text-[0.5rem] tracking-wide text-dust uppercase">
+                                    {daysAway === 1 ? 'day' : 'days'}
+                                </span>
                             </span>
-                            <span className="sr-only"> days to the next anniversary</span>
+                            <span className="sr-only">to the next anniversary</span>
                         </ProgressRing>
                     </div>
                     <p className="mt-3 text-xs text-dust">
