@@ -119,9 +119,44 @@ export interface DailyQuestion {
     answers: QuestionAnswer[];
 }
 
+/** The next occurrence of the day they started, whichever year that falls in. */
+export interface Anniversary {
+    date: string;
+    daysAway: number;
+    yearsCompleted: number;
+}
+
+/** "Us" — when they started counting from, and how that date was decided. */
+export interface Relationship {
+    startDate: string;
+    source: 'set' | 'first-message' | 'today';
+    daysTogether: number;
+    nextAnniversary: Anniversary;
+}
+
+/** One note in the jar. */
+export interface Reason {
+    _id: string;
+    text: string;
+    author: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** A heart sent from one of them to the other, waiting to be seen. */
+export interface Nudge {
+    _id: string;
+    from: string;
+    createdAt: string;
+}
+
 export interface Today {
     unreadMessages: number;
     unopenedLetters: number;
     question: { text: string; answered: boolean };
     memoryOfTheDay: { _id: string; url: string; caption: string; createdAt: string } | null;
+    daysTogether: number;
+    nextAnniversary: Anniversary;
+    reasonOfTheDay: { text: string; author: string } | null;
+    pendingNudge: Nudge | null;
 }

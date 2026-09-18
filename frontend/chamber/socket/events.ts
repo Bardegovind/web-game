@@ -22,6 +22,9 @@ export const EVENTS = {
 
     PRESENCE_UPDATE: 'presence:update',
 
+    // Love activities
+    NUDGE_NEW: 'nudge:new',
+
     // Named for the vanilla client. The server sends it to each connection as
     // it opens (and again whenever someone comes or goes): everyone stored as
     // online right now. The chamber rebuilds presence from it after a

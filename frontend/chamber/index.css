@@ -46,6 +46,11 @@
 
     --radius-bubble: 18px;
     --radius-card: 20px;
+
+    /* Registered as a Tailwind utility (`animate-heartbeat`) rather than a
+       bespoke class, for the one place something needs it: a heart waiting
+       to be seen. */
+    --animate-heartbeat: chamber-nudge-heartbeat 1.6s ease-in-out infinite;
 }
 
 /**
@@ -195,6 +200,30 @@
             border-color: rgba(255, 107, 157, 0.28);
             box-shadow: var(--glow-rose);
         }
+    }
+
+    /* A glass card with a gradient ring instead of a flat hairline border —
+       for the one card that arrived rather than was asked for: a nudge
+       waiting to be seen. Built with mask-composite rather than a second
+       stacked element, so the gradient can never show through the middle. */
+    .chamber-root .glass-edge {
+        position: relative;
+        border-color: transparent;
+    }
+
+    .chamber-root .glass-edge::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        padding: 1px;
+        background-image: var(--gradient-love-bright);
+        -webkit-mask:
+            linear-gradient(#fff 0 0) content-box,
+            linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
     }
 
     /* The chosen one among many: a conversation that is open, for instance. */
@@ -464,6 +493,16 @@
     }
     36% {
         transform: scale(1.1);
+    }
+}
+
+@keyframes chamber-nudge-heartbeat {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.18);
     }
 }
 

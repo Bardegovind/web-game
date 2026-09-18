@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { toast } from 'sonner';
 
 import { useAnswerQuestion, useQuestion, useToday } from '../../hooks/useChamber';
+import { useMarkNudgesSeen, useSendNudge } from '../../hooks/useLove';
 import { useAuthStore } from '../../stores/authStore';
 import { Skeleton } from '../../components/Skeleton';
 import { ErrorState } from '../../components/ErrorState';
 import { formatDayLabel } from '../../utils/time';
 import { HeartGlyph } from '../../app/LoveBackdrop';
+import { UsCard } from './UsCard';
 
 /**
  * What is waiting.
@@ -14,12 +17,21 @@ import { HeartGlyph } from '../../app/LoveBackdrop';
  * The first thing she sees on entering, so it opens with something rather than
  * a blank grid — and it is the reason to come back tomorrow.
  */
-export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
+export function Today({
+    onOpenImage,
+    sheetContainer,
+}: {
+    onOpenImage: (url: string) => void;
+    sheetContainer: HTMLElement | null;
+}) {
     const me = useAuthStore((s) => s.username);
     const { data, isLoading, isError, refetch } = useToday();
     const { data: question } = useQuestion();
     const answer = useAnswerQuestion();
     const [draft, setDraft] = useState('');
+    const nudge = useSendNudge();
+    const markSeen = useMarkNudgesSeen();
+    const [nudgeHint, setNudgeHint] = useState<string | null>(null);
 
     if (isLoading) {
         return (
@@ -42,9 +54,98 @@ export function Today({ onOpenImage }: { onOpenImage: (url: string) => void }) {
     const myAnswer = question?.answers.find((a) => a.username === me);
     const theirAnswer = question?.answers.find((a) => a.username !== me);
 
+    function handleNudge() {
+        setNudgeHint(null);
+        nudge.mutate(undefined, {
+            onSuccess: (result) => {
+                if (result.sent) {
+                    toast('Sent, with a heart', {
+                        icon: <HeartGlyph size={12} className="text-heart" />,
+                    });
+                } else {
+                    setNudgeHint('Just sent one — give it a minute.');
+                }
+            },
+            onError: (error) => {
+                setNudgeHint(error instanceof Error ? error.message : "That didn't send.");
+            },
+        });
+    }
+
     return (
         <div className="chamber-scroll mx-auto min-h-0 w-full max-w-2xl flex-1 overflow-y-auto px-4 pb-24">
-            <section className="pt-4 pb-6">
+            <div className="pt-4">
+                <UsCard today={data} sheetContainer={sheetContainer} />
+
+                <section className="glass mb-5 p-5">
+                    <h2 className="font-display text-sm font-semibold text-dust">Reason of the day</h2>
+                    {data.reasonOfTheDay ? (
+                        <>
+                            <p className="mt-2 text-[1.02rem] leading-relaxed text-chalk/90">
+                                &ldquo;{data.reasonOfTheDay.text}&rdquo;
+                            </p>
+                            <p className="mt-2 text-xs text-dust">&mdash; {data.reasonOfTheDay.author}</p>
+                        </>
+                    ) : (
+                        <p className="mt-2 text-sm text-dust">
+                            The jar is empty. The first reason either of you drops in becomes the one shown
+                            here.
+                        </p>
+                    )}
+                </section>
+
+                {data.pendingNudge && (
+                    <motion.section
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="glass glass-edge mb-5 p-5"
+                    >
+                        <div className="flex items-center gap-3">
+                            <HeartGlyph size={20} className="shrink-0 animate-heartbeat text-heart" />
+                            <div className="min-w-0">
+                                <p className="font-display text-base font-bold text-chalk">
+                                    {data.pendingNudge.from} is thinking of you
+                                </p>
+                                <p className="mt-0.5 text-xs text-dust">
+                                    {formatDayLabel(data.pendingNudge.createdAt)}
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            aria-label="Mark nudge as seen"
+                            onClick={() => markSeen.mutate()}
+                            disabled={markSeen.isPending}
+                            className="btn-soft mt-3 rounded-full px-4 py-2 text-sm disabled:opacity-60"
+                        >
+                            {markSeen.isPending ? 'Clearing…' : 'Seen'}
+                        </button>
+                    </motion.section>
+                )}
+
+                <section className="glass mb-5 flex items-center justify-between gap-4 p-5">
+                    <div className="min-w-0">
+                        <h2 className="font-display text-sm font-semibold text-dust">Thinking of you</h2>
+                        <p className="mt-1 text-xs text-dust">{nudgeHint ?? 'One tap sends a heart, right now.'}</p>
+                    </div>
+                    <button
+                        type="button"
+                        aria-label="Send a nudge"
+                        onClick={handleNudge}
+                        disabled={nudge.isPending}
+                        className="group/nudge btn-love inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm disabled:opacity-60"
+                    >
+                        <HeartGlyph
+                            size={14}
+                            className="transition-transform duration-300 group-hover/nudge:scale-125"
+                        />
+                        {nudge.isPending ? 'Sending…' : 'Send a heart'}
+                    </button>
+                </section>
+            </div>
+
+            <section className="pb-6">
                 {waiting.length > 0 ? (
                     <>
                         <p className="love-text font-display text-[1.65rem] leading-tight font-bold">

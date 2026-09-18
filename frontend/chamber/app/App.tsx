@@ -28,6 +28,7 @@ import { useChatStore } from '../stores/chatStore';
 import { useConversations, conversationsKey } from '../hooks/useConversations';
 import { messagesKey } from '../hooks/useMessages';
 import { useToday, todayKey } from '../hooks/useChamber';
+import { pendingNudgeKey } from '../hooks/useLove';
 import { connectSocket, disconnectSocket, setSocketCallbacks } from '../socket/socketClient';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/sonner';
@@ -124,6 +125,13 @@ export function App() {
                 queryClient.invalidateQueries({ queryKey: todayKey });
             },
             onRead: () => queryClient.invalidateQueries({ queryKey: conversationsKey }),
+            onNudge: (payload) => {
+                queryClient.invalidateQueries({ queryKey: pendingNudgeKey });
+                queryClient.invalidateQueries({ queryKey: todayKey });
+                toast(`${payload.from} is thinking of you`, {
+                    icon: <HeartGlyph size={12} className="text-heart" />,
+                });
+            },
             onPresence: (update) => notifierRef.current?.handle(update),
             onOnlineList: (usernames) => {
                 // The server's word on who is here now: anyone else in the
@@ -222,7 +230,7 @@ export function App() {
 
             <main className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                 <ScreenStage screen={screen} direction={direction}>
-                {screen === 'today' && <Today onOpenImage={setLightbox} />}
+                {screen === 'today' && <Today onOpenImage={setLightbox} sheetContainer={root} />}
                 {screen === 'moments' && <MemoryGrid onOpenImage={setLightbox} sheetContainer={root} />}
                 {screen === 'letters' && <Letters />}
                 {screen === 'story' && <Story />}

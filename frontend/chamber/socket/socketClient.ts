@@ -14,6 +14,8 @@ export interface SocketCallbacks {
     onPresence?: (update: PresencePayload) => void;
     /** Who the server says is online: sent as each connection opens, and whenever someone comes or goes. */
     onOnlineList?: (usernames: string[]) => void;
+    /** A heart sent from the other person, delivered live if she is here to receive it. */
+    onNudge?: (payload: { from: string; createdAt: string }) => void;
 }
 
 let callbacks: SocketCallbacks = {};
@@ -74,6 +76,8 @@ export function connectSocket(token: string): Socket {
     socket.on(EVENTS.REACTION_UPDATED, (payload: { messageId: string; reactions: Reaction[] }) => {
         useChatStore.getState().setReactions(payload.messageId, payload.reactions);
     });
+
+    socket.on(EVENTS.NUDGE_NEW, (payload: { from: string; createdAt: string }) => callbacks.onNudge?.(payload));
 
     socket.on(EVENTS.TYPING_START, (payload: TypingPayload) => {
         usePresenceStore.getState().setTyping(payload.sender, true);

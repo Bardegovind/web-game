@@ -73,3 +73,33 @@ export function formatLastSeen(value: string | Date | null): string {
 
     return formatDayLabel(date);
 }
+
+/** "1 year, 2 months, 6 days" — a calendar-aware breakdown, not a division. */
+export function formatTogether(startDate: string | Date | null, now?: Date): string {
+    const start = toDate(startDate);
+    if (!start) return '';
+
+    const at = now ?? new Date();
+    let years = at.getFullYear() - start.getFullYear();
+    let months = at.getMonth() - start.getMonth();
+    let days = at.getDate() - start.getDate();
+
+    if (days < 0) {
+        months -= 1;
+        // The last day of the month before `at`: how many days a short
+        // borrow actually carries.
+        const borrowedFrom = new Date(at.getFullYear(), at.getMonth(), 0);
+        days += borrowedFrom.getDate();
+    }
+    if (months < 0) {
+        years -= 1;
+        months += 12;
+    }
+
+    const parts: string[] = [];
+    if (years > 0) parts.push(`${years} year${years === 1 ? '' : 's'}`);
+    if (months > 0) parts.push(`${months} month${months === 1 ? '' : 's'}`);
+    if (days > 0 || parts.length === 0) parts.push(`${days} day${days === 1 ? '' : 's'}`);
+
+    return parts.join(', ');
+}

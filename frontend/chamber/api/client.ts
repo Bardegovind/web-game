@@ -49,6 +49,14 @@ export const api = {
         }).then(parse<T>);
     },
 
+    put<T>(path: string, body?: unknown): Promise<T> {
+        return fetch(`${BASE}${path}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', ...authHeaders() },
+            body: body === undefined ? undefined : JSON.stringify(body),
+        }).then(parse<T>);
+    },
+
     upload<T>(path: string, form: FormData): Promise<T> {
         // No Content-Type: the browser sets the multipart boundary itself.
         return fetch(`${BASE}${path}`, {
