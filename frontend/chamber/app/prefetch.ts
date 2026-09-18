@@ -3,7 +3,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { bucketQuery, lettersQuery, questionQuery, storyQuery, todayQuery } from '../hooks/useChamber';
 import { conversationsQuery } from '../hooks/useConversations';
 import { memoriesQuery } from '../hooks/useMemories';
-import { pendingNudgeQuery, reasonsQuery, usQuery } from '../hooks/useLove';
+import { reasonsQuery, usQuery } from '../hooks/useLove';
 
 /**
  * Loads every screen's data the moment she enters, so a tab opened later
@@ -24,6 +24,5 @@ export async function prefetchChamber(queryClient: QueryClient): Promise<void> {
         queryClient.prefetchQuery(bucketQuery()),
         queryClient.prefetchQuery(usQuery()),
         queryClient.prefetchQuery(reasonsQuery()),
-        queryClient.prefetchQuery(pendingNudgeQuery()),
     ]);
 }

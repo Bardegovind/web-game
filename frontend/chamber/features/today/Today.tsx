@@ -30,9 +30,12 @@ import { UsCard } from './UsCard';
 export function Today({
     onOpenImage,
     sheetContainer,
+    onOpenReasons,
 }: {
     onOpenImage: (url: string) => void;
     sheetContainer: HTMLElement | null;
+    /** Takes her to the jar itself, from the one reason shown here. */
+    onOpenReasons: () => void;
 }) {
     const me = useAuthStore((s) => s.username);
     const { data, isLoading, isError, refetch } = useToday();
@@ -132,6 +135,15 @@ export function Today({
                                     shown here.
                                 </p>
                             )}
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="mt-3 -ml-2"
+                                onClick={onOpenReasons}
+                            >
+                                {data.reasonOfTheDay ? 'Open the jar' : 'Write the first one'}
+                            </Button>
                         </div>
                     </Card>
 
@@ -159,7 +171,9 @@ export function Today({
                                         variant="soft"
                                         size="sm"
                                         aria-label="Mark nudge as seen"
-                                        onClick={() => markSeen.mutate()}
+                                        onClick={() => markSeen.mutate(undefined, {
+                                    onError: () => setNudgeHint('That would not clear just now. Try again in a moment.'),
+                                })}
                                         disabled={markSeen.isPending}
                                         className="mt-3"
                                     >
@@ -173,7 +187,7 @@ export function Today({
                     <Card className="flex-row items-center justify-between gap-4">
                         <div className="min-w-0">
                             <CardTitle>Thinking of you</CardTitle>
-                            <p className="mt-1 text-xs text-dust">
+                            <p className="mt-1 text-xs text-dust" role={nudgeHint ? 'alert' : undefined}>
                                 {nudgeHint ?? 'One tap sends a heart, right now.'}
                             </p>
                         </div>

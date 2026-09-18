@@ -73,7 +73,13 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
                             </Button>
                         </div>
 
-                        <ProgressRing value={percent} size={68} strokeWidth={5} className="shrink-0">
+                        <ProgressRing
+                            value={percent}
+                            label="Days until the next anniversary"
+                            size={68}
+                            strokeWidth={5}
+                            className="shrink-0"
+                        >
                             <span className="font-display text-[0.7rem] leading-none font-bold text-chalk">
                                 {daysAway}
                             </span>

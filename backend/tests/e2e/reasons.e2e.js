@@ -162,6 +162,28 @@ test('the jar of reasons', async (t) => {
         assert.equal(await page.locator('li').filter({ hasText: REASON_TEXT_HER }).count(), 1, 'hers should remain');
     });
 
+    await t.test("Today's reason card takes her to the jar", async () => {
+        await page.locator(`${BAR} [aria-label="Today"]`).click();
+        await page.waitForSelector('text=Reason of the day', { timeout: 6000 });
+
+        await page
+            .locator('button')
+            .filter({ hasText: /Open the jar|Write the first one/ })
+            .click();
+
+        await page.waitForSelector('textarea[aria-label="A reason"]', { timeout: 6000 });
+        assert.equal(
+            await page.locator(`${BAR} [aria-current="page"]`).getAttribute('aria-label'),
+            'More',
+            'the reason card should land her on Reasons, under More'
+        );
+        assert.equal(
+            await page.locator('li').filter({ hasText: REASON_TEXT_HER }).count(),
+            1,
+            'and the jar she lands in is the real one'
+        );
+    });
+
     await t.test('nothing threw', () => {
         assert.deepEqual(pageErrors, []);
     });

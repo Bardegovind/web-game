@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
  */
 export function ProgressRing({
     value,
+    label,
     size = 64,
     strokeWidth = 6,
     className,
@@ -18,6 +19,8 @@ export function ProgressRing({
 }: {
     /** 0–100. */
     value: number;
+    /** What the ring is counting. A progressbar takes no name from its contents. */
+    label: string;
     size?: number;
     strokeWidth?: number;
     className?: string;
@@ -34,6 +37,7 @@ export function ProgressRing({
     return (
         <div
             role="progressbar"
+            aria-label={label}
             aria-valuenow={Math.round(clamped)}
             aria-valuemin={0}
             aria-valuemax={100}
