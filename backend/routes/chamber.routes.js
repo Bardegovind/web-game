@@ -30,4 +30,15 @@ router.post('/push/unsubscribe', c.unsubscribePush);
 router.get('/question', c.getQuestion);
 router.post('/question', c.answerQuestion);
 
+router.get('/us', c.getUs);
+router.put('/us', c.setUs);
+
+router.get('/reasons', c.listReasons);
+router.post('/reasons', c.addReason);
+router.delete('/reasons/:id', c.removeReason);
+
+router.post('/nudge', c.sendNudge);
+router.get('/nudge/pending', c.listPendingNudges);
+router.post('/nudge/seen', c.markNudgesSeen);
+
 module.exports = router;

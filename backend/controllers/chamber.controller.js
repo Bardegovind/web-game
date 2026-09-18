@@ -8,18 +8,28 @@ const GalleryItem = require('../models/GalleryItem');
 const User = require('../models/User');
 const Message = require('../models/Message');
 const UserConversation = require('../models/UserConversation');
+const Relationship = require('../models/Relationship');
+const Reason = require('../models/Reason');
+const Nudge = require('../models/Nudge');
 
 const { createLettersService } = require('../services/letters.service');
 const { createDailyService } = require('../services/daily.service');
 const { createChatService } = require('../services/chat.service');
+const { createRelationshipService } = require('../services/relationship.service');
+const { createReasonsService } = require('../services/reasons.service');
+const { createNudgesService } = require('../services/nudges.service');
 const { QUESTION_PROMPTS, LETTER_PROMPTS } = require('../services/prompts');
 const { createNotifier } = require('../services/notifier');
 const PushSubscriptionModel = require('../models/PushSubscription');
+const { EVENTS, roomFor } = require('../socket/events');
 
 const letters = createLettersService({ Letter });
 const daily = createDailyService({ Question, GalleryItem, prompts: QUESTION_PROMPTS });
 const chat = createChatService({ Message, UserConversation });
 const notifier = createNotifier({ PushSubscription: PushSubscriptionModel, log: console.log });
+const relationship = createRelationshipService({ Relationship, Message });
+const reasons = createReasonsService({ Reason });
+const nudges = createNudgesService({ Nudge });
 
 /** Turns a thrown service error into a message that can be shown as-is. */
 function fail(res, error, status = 400) {
@@ -43,14 +53,22 @@ const getToday = async (req, res) => {
         const me = req.user.username;
         const peer = await partnerOf(me);
 
-        const [unreadMessages, unopenedLetters, question, memory] = await Promise.all([
+        const [
+            unreadMessages, unopenedLetters, question, memory,
+            daysTogether, nextAnniversary, reasonOfTheDay, pendingNudges,
+        ] = await Promise.all([
             peer ? chat.unreadCount({ me, peer }) : 0,
             letters.unopenedCount(me),
             daily.questionForToday(),
             daily.memoryOfTheDay(),
+            relationship.daysTogether(),
+            relationship.nextAnniversary(),
+            reasons.ofTheDay({}),
+            nudges.pending({ username: me }),
         ]);
 
         const myAnswer = question.answers.find((a) => a.username === me) || null;
+        const pendingNudge = pendingNudges[0] || null;
 
         return res.json({
             success: true,
@@ -60,6 +78,14 @@ const getToday = async (req, res) => {
                 question: { text: question.text, answered: Boolean(myAnswer) },
                 memoryOfTheDay: memory
                     ? { _id: memory._id, url: memory.url, caption: memory.caption, createdAt: memory.createdAt }
+                    : null,
+                daysTogether,
+                nextAnniversary,
+                reasonOfTheDay: reasonOfTheDay
+                    ? { text: reasonOfTheDay.text, author: reasonOfTheDay.author }
+                    : null,
+                pendingNudge: pendingNudge
+                    ? { _id: pendingNudge._id, from: pendingNudge.from, createdAt: pendingNudge.createdAt }
                     : null,
             },
         });
@@ -237,6 +263,115 @@ const answerQuestion = async (req, res) => {
     }
 };
 
+// ---- Us ----
+
+/** The current answer, in one shape, for both GET and PUT. */
+async function usPayload() {
+    const [{ startDate, source }, daysTogether, nextAnniversary] = await Promise.all([
+        relationship.get(),
+        relationship.daysTogether(),
+        relationship.nextAnniversary(),
+    ]);
+    return { startDate, source, daysTogether, nextAnniversary };
+}
+
+const getUs = async (req, res) => {
+    try {
+        return res.json({ success: true, ...(await usPayload()) });
+    } catch (error) {
+        console.error('Us Error:', error);
+        return res.status(500).json({ success: false, message: 'Could not load the two of you.' });
+    }
+};
+
+const setUs = async (req, res) => {
+    try {
+        await relationship.set({ date: req.body.date, username: req.user.username });
+        return res.json({ success: true, ...(await usPayload()) });
+    } catch (error) {
+        return fail(res, error);
+    }
+};
+
+// ---- Reasons ----
+
+const listReasons = async (req, res) => {
+    try {
+        return res.json({ success: true, reasons: await reasons.list() });
+    } catch (error) {
+        console.error('Reasons Error:', error);
+        return res.status(500).json({ success: false, message: 'Could not load the jar.' });
+    }
+};
+
+const addReason = async (req, res) => {
+    try {
+        const reason = await reasons.add({ text: req.body.text, author: req.user.username });
+        return res.status(201).json({ success: true, reason });
+    } catch (error) {
+        return fail(res, error);
+    }
+};
+
+const removeReason = async (req, res) => {
+    try {
+        await reasons.remove({ id: req.params.id, author: req.user.username });
+        return res.json({ success: true });
+    } catch (error) {
+        // Mirrors how a letter that is not hers is handled: one clean status
+        // for "not here" and "not yours" alike.
+        return fail(res, error, 404);
+    }
+};
+
+// ---- Thinking of you ----
+
+const sendNudge = async (req, res) => {
+    try {
+        const me = req.user.username;
+        const to = await partnerOf(me);
+        if (!to) return fail(res, new Error('There is no one to nudge yet.'));
+
+        const result = await nudges.send({ from: me, to });
+
+        if (!result.sent) {
+            return res.status(429).json({ success: false, sent: false, reason: result.reason });
+        }
+
+        // Live if she is there; the REST call has already succeeded either way.
+        const io = req.app.get('io');
+        if (io) {
+            io.to(roomFor(to)).emit(EVENTS.NUDGE_NEW, { from: me, createdAt: result.nudge.createdAt });
+        }
+
+        return res.json({ success: true, sent: true });
+    } catch (error) {
+        return fail(res, error);
+    }
+};
+
+const listPendingNudges = async (req, res) => {
+    try {
+        const waiting = await nudges.pending({ username: req.user.username });
+        return res.json({
+            success: true,
+            nudges: waiting.map((n) => ({ _id: n._id, from: n.from, createdAt: n.createdAt })),
+        });
+    } catch (error) {
+        console.error('Nudge Error:', error);
+        return res.status(500).json({ success: false, message: 'Could not load nudges.' });
+    }
+};
+
+const markNudgesSeen = async (req, res) => {
+    try {
+        const seen = await nudges.markSeen({ username: req.user.username });
+        return res.json({ success: true, seen });
+    } catch (error) {
+        return fail(res, error);
+    }
+};
+
 // ---- Push ----
 
 /**
@@ -274,4 +409,7 @@ module.exports = {
     listStory, addStoryEntry, deleteStoryEntry,
     listBucket, addBucketItem, toggleBucketItem, deleteBucketItem,
     getQuestion, answerQuestion,
+    getUs, setUs,
+    listReasons, addReason, removeReason,
+    sendNudge, listPendingNudges, markNudgesSeen,
 };

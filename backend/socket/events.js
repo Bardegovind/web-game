@@ -29,6 +29,9 @@ const EVENTS = {
     // Presence
     PRESENCE_UPDATE: 'presence:update',
 
+    // Love activities
+    NUDGE_NEW: 'nudge:new',
+
     // Kept so the current vanilla client keeps working until the React chamber
     // replaces it. Both are emitted during the transition.
     LEGACY_MESSAGE_RECEIVE: 'message:receive',

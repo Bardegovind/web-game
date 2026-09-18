@@ -50,6 +50,10 @@ const startServer = async () => {
         jwtSecret: process.env.JWT_SECRET,
     });
 
+    // Lets a REST route (a nudge, say) reach a room over the same socket
+    // server without every controller needing its own wiring to get one.
+    app.set('io', io);
+
     // Only matters with more than one instance; absent REDIS_URL this is a no-op.
     await attachRedisAdapter(io, process.env.REDIS_URL, console.log);
 
