@@ -72,7 +72,11 @@ html {
        under the finger while she is tapping the corners. */
     height: 100%;
     overflow: hidden;
-    overscroll-behavior: none;
+    /* Sideways is still refused, but a downward pull is not: that gesture is
+       how the page is refreshed on a phone, and there is nothing to scroll
+       into, so the layout stays where it is either way. */
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: auto;
 }
 
 body {
@@ -83,7 +87,8 @@ body {
     overflow: hidden;
     position: relative;
     touch-action: manipulation;
-    overscroll-behavior: none;
+    overscroll-behavior-x: none;
+    overscroll-behavior-y: auto;
 }
 
 /* Neon Grid Background with X/O pattern */
@@ -312,12 +317,14 @@ body::after {
     animation: viewFadeIn 0.5s ease;
 }
 
-/* Nothing on the game screen may start a scroll, a pinch or a double-tap
-   zoom: every touch here is meant as a tap, and a page that shifts under the
-   finger is what made the corners feel broken. The password dialog and the
+/* No pinch, no double-tap zoom and no sideways drag on the game screen: every
+   touch here is meant as a tap, and a page that shifts under the finger is what
+   made the corners feel broken. A straight up-or-down drag is still allowed, so
+   the phone's pull-to-refresh keeps working; the screen holds the layout
+   exactly, so that drag has nothing to scroll into. The password dialog and the
    chamber keep their own touch behaviour. */
 #game-view {
-    touch-action: none;
+    touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;

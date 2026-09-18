@@ -142,8 +142,10 @@ for (const device of DEVICES) {
                 return {
                     htmlOverflow: html.overflow,
                     bodyOverflow: body.overflow,
-                    htmlOverscroll: html.overscrollBehavior,
-                    bodyOverscroll: body.overscrollBehavior,
+                    htmlOverscrollX: html.overscrollBehaviorX,
+                    htmlOverscrollY: html.overscrollBehaviorY,
+                    bodyOverscrollX: body.overscrollBehaviorX,
+                    bodyOverscrollY: body.overscrollBehaviorY,
                     gameTouchAction: game.touchAction,
                     gameUserSelect: game.userSelect,
                 };
@@ -151,9 +153,13 @@ for (const device of DEVICES) {
             assert.deepEqual(styles, {
                 htmlOverflow: 'hidden',
                 bodyOverflow: 'hidden',
-                htmlOverscroll: 'none',
-                bodyOverscroll: 'none',
-                gameTouchAction: 'none',
+                htmlOverscrollX: 'none',
+                // A downward pull must still reach the browser: that is how the
+                // page is refreshed on a phone.
+                htmlOverscrollY: 'auto',
+                bodyOverscrollX: 'none',
+                bodyOverscrollY: 'auto',
+                gameTouchAction: 'pan-y',
                 gameUserSelect: 'none',
             });
         });
