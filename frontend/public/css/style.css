@@ -66,15 +66,24 @@ html {
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
+    /* The first screen never scrolls. On a phone the address bar makes the
+       visible area shorter than 100vh, and anything taller than it would slide
+       under the finger while she is tapping the corners. */
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
 }
 
 body {
     font-family: var(--game-font-main);
     background: var(--game-bg-primary);
     color: var(--game-text-primary);
-    min-height: 100vh;
-    overflow-x: hidden;
+    height: 100%;
+    overflow: hidden;
     position: relative;
+    touch-action: manipulation;
+    overscroll-behavior: none;
 }
 
 /* Neon Grid Background with X/O pattern */
@@ -289,7 +298,11 @@ body::after {
     display: none;
     position: relative;
     z-index: 1;
-    min-height: 100vh;
+    height: 100vh;
+    /* dvh tracks the visible height as the phone's address bar shows and
+       hides; vh above is the fallback where dvh is unsupported. */
+    height: 100dvh;
+    overflow: hidden;
 }
 
 .view.active {
@@ -297,6 +310,17 @@ body::after {
     justify-content: center;
     align-items: center;
     animation: viewFadeIn 0.5s ease;
+}
+
+/* Nothing on the game screen may start a scroll, a pinch or a double-tap
+   zoom: every touch here is meant as a tap, and a page that shifts under the
+   finger is what made the corners feel broken. The password dialog and the
+   chamber keep their own touch behaviour. */
+#game-view {
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
 }
 
 @keyframes viewFadeIn {
@@ -342,6 +366,53 @@ body::after {
        clicks while deciding whether rapid taps were a zoom gesture. */
     touch-action: manipulation;
 }
+
+/* A glint of light where the finger landed, so each tap can be counted by
+   eye as well as felt. Faint and short: it reads as a reflection on the
+   glass, not as a button lighting up. */
+.tap-light {
+    position: fixed;
+    width: 64px;
+    height: 64px;
+    margin: -32px 0 0 -32px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 101;
+    background: radial-gradient(circle,
+            rgba(255, 255, 255, 0.22) 0%,
+            rgba(124, 58, 237, 0.14) 38%,
+            transparent 70%);
+    animation: tapLightFade 280ms ease-out forwards;
+}
+
+@keyframes tapLightFade {
+    from {
+        opacity: 1;
+        transform: scale(0.55);
+    }
+
+    to {
+        opacity: 0;
+        transform: scale(1.15);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tap-light {
+        animation: tapLightHold 200ms linear forwards;
+    }
+
+    @keyframes tapLightHold {
+        from {
+            opacity: 1;
+        }
+
+        to {
+            opacity: 0;
+        }
+    }
+}
+
 
 .hidden-tap.top-left,
 .hidden-tap.top-right {
@@ -430,6 +501,9 @@ body::after {
     flex-direction: column;
     align-items: center;
     gap: 28px;
+    /* The winner's banner is laid over this, so that announcing a result never
+       moves the buttons out from under a thumb that is already reaching. */
+    position: relative;
 }
 
 .game-header {
@@ -569,6 +643,15 @@ body::after {
     user-select: none;
     position: relative;
     overflow: hidden;
+    /* Prevent scroll on touch — tap registers instantly */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Subtle flash on tap so user can track their touches */
+.cell.tap-flash {
+    background: var(--game-bg-card-hover);
+    transition: background 0.05s ease;
 }
 
 .cell::before {
@@ -654,7 +737,26 @@ body::after {
     background: var(--game-bg-card);
     border: 1px solid var(--game-border-medium);
     border-radius: var(--game-radius-lg);
-    animation: bannerSlide 0.5s var(--game-transition-bounce);
+    /* The centring lives in the keyframes too: bannerSlide ends on its own
+       transform, which would otherwise throw the card off to the right. */
+    animation: bannerRise 0.5s var(--game-transition-bounce);
+    /* Over the board, not in the column: the page is locked to the screen, so a
+       banner that took its own row would push New Game towards the bottom
+       corner — or off the screen entirely — exactly when it is wanted. */
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 50;
+    /* Compact, so the winning line stays readable behind it. */
+    flex-direction: row;
+    gap: 12px;
+    padding: 14px 20px;
+    max-width: calc(100% - 32px);
+    white-space: nowrap;
+    /* Never in the way of a tap on what is behind it. */
+    pointer-events: none;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
 }
 
 .result-banner.show {
@@ -662,7 +764,7 @@ body::after {
 }
 
 .result-icon {
-    font-size: 2.5rem;
+    font-size: 1.7rem;
     animation: iconBounce 0.6s ease;
 }
 
@@ -677,6 +779,18 @@ body::after {
 
     100% {
         transform: scale(1) rotate(0deg);
+    }
+}
+
+@keyframes bannerRise {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -50%) translateY(14px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%) translateY(0) scale(1);
     }
 }
 
@@ -714,7 +828,18 @@ body::after {
     align-items: center;
     gap: 6px;
     white-space: nowrap;
+    /* Prevent scroll on touch — tap registers instantly */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
+
+/* Subtle flash on tap so user can track their button presses */
+.btn.tap-flash {
+    filter: brightness(1.3);
+    transition: filter 0.05s ease;
+}
+
 
 .btn-primary {
     background: var(--game-accent-primary);

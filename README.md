@@ -21,21 +21,25 @@ knows this sequence; it is the one thing in the project that must never be
 redesigned. The corners' *sizes* are not part of it: they were enlarged so a
 real thumb lands on them, and `tests/e2e/tapTolerance.e2e.js` keeps them that way.
 
-### What she feels
+### What she feels and sees
 
-Every tap on a hidden corner vibrates, and the feeling says what happened to
-it, so there is nothing to count:
+Every tap that lands on a hidden corner answers twice over: a short, soft tick
+in the hand, and a faint glint of light where the finger touched. Both say the
+same thing — *that tap landed* — so the count can be followed by feel or by eye:
 
-| Feeling | Meaning |
+| Answer | Meaning |
 |---|---|
-| short tick | that tap counted |
-| two pulses | this corner is done, move to the next |
-| one long buzz | that tap did not count — start again at top-left |
-| a longer pattern | the door is opening |
+| one tick, one glint | a tap landed on a corner |
+| two ticks, two glints | this corner is done, move to the next |
 
-Tap each corner until you feel two pulses, then move on. Taps on the game board
-never vibrate. iPhones do not support web vibration, so on an iPhone none of
-this is felt and the counts have to be done by hand.
+There is deliberately no separate signal for a tap that starts the run over. The
+long buzz that used to mean it read as "the button did not click", which is the
+opposite of what it meant, so nothing here is ever longer than a tick. Taps on
+the game board neither buzz nor glow. iPhones do not support web vibration, so
+there the glint is the whole story.
+
+The game screen itself never scrolls, pans or zooms: it is locked to the visible
+height of the phone, so nothing shifts under a thumb that is mid-count.
 
 ## Running it
 

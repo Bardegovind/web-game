@@ -27,29 +27,36 @@
 
     const ZONE_SELECTOR = '[data-tap]';
 
+    /** The class every glint of light carries, so tests can find them. */
+    const LIGHT_CLASS = 'tap-light';
+
+    /** How long the light lives before it is taken out of the page again. */
+    const LIGHT_LIFETIME_MS = 600;
+
+    /** The pause before the second glint and tick that mean "this corner is done". */
+    const SECOND_CUE_MS = 150;
+
     /**
-     * What each moment feels like. Every tap on a corner is one of these four.
+     * What each moment feels like.
      *
-     * TICK        counted. Unchanged — already reported as felt on a real phone.
-     * STEP_DONE   this corner is finished, move to the next one. Exists because
-     *             sixteen identical ticks cannot be counted by feel.
-     * START_OVER  that tap did not count, begin again at top-left. Exists because
-     *             a tap on the wrong corner used to be silent, and on a real phone
-     *             that silence looked exactly like a dead corner — there was no
-     *             way to tell a miscount from a tap that never landed.
-     * UNLOCKED    the door is opening.
+     * Every tap that lands on a corner is felt the same way: one short, soft
+     * tick, so the hand knows the tap registered and the count moved. The long
+     * buzz that used to mean "that did not count" is gone — on a real phone it
+     * read as "the button did not click", which is the opposite of the truth.
+     *
+     * TICK       a tap landed.
+     * STEP_DONE  this corner is finished, move to the next one. Two soft ticks,
+     *            because sixteen identical ones cannot be counted by feel.
+     * UNLOCKED   the door is opening.
      */
     const HAPTICS = {
-        TICK: 8,
-        STEP_DONE: [40, 60, 40],
-        UNLOCKED: [70, 50, 110],
-        START_OVER: 220,
+        TICK: 10,
+        STEP_DONE: [10, 60, 10],
+        UNLOCKED: [10, 60, 10, 60, 10],
     };
 
     function createTapZones(options) {
         const opts = options || {};
-        // Set haptics: false to turn the confirmation tick off entirely.
-        if (opts.haptics === undefined) opts.haptics = true;
         const doc = opts.document || document;
         const onUnlock = opts.onUnlock || function () {};
         const clock = opts.now || function () { return Date.now(); };
@@ -58,19 +65,14 @@
         let bindings = [];
 
         /**
-         * Silent, invisible feedback, felt only by the hand holding the phone.
+         * Felt only by the hand holding the phone, and never loud.
          *
-         * Every tap that lands on a corner is felt, and the feeling says what
-         * happened to it. A tap that misses the corners entirely is not felt,
-         * and neither is anything on the game board.
-         *
-         * The cost, accepted on purpose: someone idly tapping a corner will feel
-         * it too, which makes the corners slightly discoverable. The alternative
+         * The cost, accepted on purpose: someone idly tapping a corner feels it
+         * too, which makes the corners slightly discoverable. The alternative
          * was a corner that went quiet whenever she was one tap out, which she
          * could not tell apart from a broken one.
          */
         function feel(pattern) {
-            if (!opts.haptics) return;
             if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
 
             try {
@@ -80,18 +82,58 @@
             }
         }
 
+        /**
+         * A glint of light where the finger landed, so a tap can be counted by
+         * eye as well as felt. It takes itself out of the page again, and it
+         * never catches a tap of its own.
+         */
+        function glint(x, y) {
+            const body = doc.body;
+            if (!body) return;
+
+            const light = doc.createElement('span');
+            light.className = LIGHT_CLASS;
+            light.setAttribute('aria-hidden', 'true');
+            light.style.left = x + 'px';
+            light.style.top = y + 'px';
+
+            let done = false;
+            const remove = function () {
+                if (done) return;
+                done = true;
+                if (light.parentNode) light.parentNode.removeChild(light);
+            };
+
+            light.addEventListener('animationend', remove);
+            body.appendChild(light);
+            // A fallback for the case where the animation never runs at all.
+            setTimeout(remove, LIGHT_LIFETIME_MS);
+        }
+
         function handlePointerDown(zoneId) {
             return function (event) {
                 // Keep the corner inert: no text selection, no synthesized click,
                 // no scroll gesture starting from a deliberate tap.
                 event.preventDefault();
 
+                const x = typeof event.clientX === 'number' ? event.clientX : 0;
+                const y = typeof event.clientY === 'number' ? event.clientY : 0;
+
                 const result = sequence.tap(zoneId, clock());
 
-                if (result.unlocked) feel(HAPTICS.UNLOCKED);
-                else if (result.stepCompleted) feel(HAPTICS.STEP_DONE);
-                else if (result.progressed) feel(HAPTICS.TICK);
-                else if (result.reset) feel(HAPTICS.START_OVER);
+                // Every tap on a corner is answered, whether it counted or sent
+                // her back to the start: the hand and the eye both confirm the
+                // touch landed, and nothing shouts about a miscount.
+                glint(x, y);
+
+                if (result.unlocked) {
+                    feel(HAPTICS.UNLOCKED);
+                } else if (result.stepCompleted) {
+                    feel(HAPTICS.STEP_DONE);
+                    setTimeout(function () { glint(x, y); }, SECOND_CUE_MS);
+                } else {
+                    feel(HAPTICS.TICK);
+                }
 
                 if (result.unlocked) {
                     disarm();
@@ -142,5 +184,5 @@
         };
     }
 
-    return { createTapZones: createTapZones, HAPTICS: HAPTICS };
+    return { createTapZones: createTapZones, HAPTICS: HAPTICS, LIGHT_CLASS: LIGHT_CLASS };
 });

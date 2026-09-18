@@ -26,16 +26,40 @@ const game = {
         this.btnRestart = document.getElementById('btn-restart');
         this.btnResetScores = document.getElementById('btn-reset-scores');
 
-        // Cell clicks
+        // Cell clicks — with subtle visual tap feedback
         this.cells.forEach((cell, index) => {
             cell.addEventListener('click', () => this.makeMove(index));
+            // Visual flash on every touch so user can track their taps
+            cell.addEventListener('pointerdown', (e) => {
+                e.stopPropagation();
+                this.tapFlash(cell);
+            });
         });
 
-        // Button clicks
+        // Button clicks — with subtle visual tap feedback
         this.btnRestart.addEventListener('click', () => this.restart());
         this.btnResetScores.addEventListener('click', () => this.resetScores());
+        this.btnRestart.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            this.tapFlash(this.btnRestart);
+        });
+        this.btnResetScores.addEventListener('pointerdown', (e) => {
+            e.stopPropagation();
+            this.tapFlash(this.btnResetScores);
+        });
+
 
         this.updateStatus();
+    },
+
+    /**
+     * Subtle visual tap flash — a brief light highlight appears on the
+     * element so the user can track every touch. Replaces vibration.
+     */
+    tapFlash(el) {
+        el.classList.add('tap-flash');
+        // Remove after a very short time so it feels like a quick flash
+        setTimeout(() => el.classList.remove('tap-flash'), 120);
     },
 
     makeMove(index) {
