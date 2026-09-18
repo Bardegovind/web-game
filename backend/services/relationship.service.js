@@ -1,5 +1,8 @@
 'use strict';
 
+/** The one row's identity, so concurrent saves update it instead of racing to insert. */
+const SINGLETON_ID = 'singleton';
+
 /**
  * "Us" — days together, counting toward the next anniversary.
  *
@@ -70,7 +73,7 @@ function createRelationshipService(deps) {
      * `'today'` only when there is nothing at all to anchor to yet.
      */
     async function get() {
-        const stored = await Relationship.findOne({}).lean();
+        const stored = await Relationship.findOne({ _id: SINGLETON_ID }).lean();
         if (stored) return { startDate: stored.startDate, source: 'set' };
 
         const firstMessage = await firstMessageDate();
@@ -99,9 +102,9 @@ function createRelationshipService(deps) {
         const updatedBy = username ? String(username).toLowerCase() : null;
 
         await Relationship.findOneAndUpdate(
-            {},
+            { _id: SINGLETON_ID },
             { startDate: parsed, updatedBy },
-            { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
+            { upsert: true, setDefaultsOnInsert: true }
         );
 
         return { startDate: parsed, source: 'set' };

@@ -341,7 +341,13 @@ const sendNudge = async (req, res) => {
         // Live if she is there; the REST call has already succeeded either way.
         const io = req.app.get('io');
         if (io) {
-            io.to(roomFor(to)).emit(EVENTS.NUDGE_NEW, { from: me, createdAt: result.nudge.createdAt });
+            try {
+                io.to(roomFor(to)).emit(EVENTS.NUDGE_NEW, { from: me, createdAt: result.nudge.createdAt });
+            } catch (error) {
+                // It is already saved and waiting for her; a failure to announce
+                // it live must not tell him it never went.
+                console.error('Nudge announce failed:', error);
+            }
         }
 
         return res.json({ success: true, sent: true });

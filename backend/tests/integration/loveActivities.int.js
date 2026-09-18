@@ -160,6 +160,28 @@ test('love activities', async (t) => {
         assert.equal(new Date(still.body.startDate).toISOString().slice(0, 10), '2024-01-01');
     });
 
+    await t.test('two saves at once leave one date, not two rows', async () => {
+        // An empty upsert filter used to let each of two simultaneous saves
+        // decide nothing matched, so both inserted, and later reads could
+        // return either row.
+        const [his, hers] = await Promise.all([
+            call(himToken, 'PUT', '/api/chamber/us', { date: '2024-01-01' }),
+            call(herToken, 'PUT', '/api/chamber/us', { date: '2024-01-01' }),
+        ]);
+
+        assert.equal(his.status, 200);
+        assert.equal(hers.status, 200);
+
+        await mongoose.connect(MONGO_URI);
+        const rows = await mongoose.connection.db.collection('relationships').countDocuments();
+        await mongoose.disconnect();
+
+        assert.equal(rows, 1, 'one relationship, one row, whatever the timing');
+
+        const seen = await call(herToken, 'GET', '/api/chamber/us');
+        assert.equal(new Date(seen.body.startDate).toISOString().slice(0, 10), '2024-01-01');
+    });
+
     let firstReasonId = null;
 
     await t.test('the jar: either of them can add, both can see', async () => {

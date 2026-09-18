@@ -17,7 +17,10 @@ function createReasonsService(deps) {
 
     /** Newest first — the jar reads like a feed, not an archive. */
     async function list() {
-        return Reason.find({}).sort({ createdAt: -1 }).lean();
+        // The id breaks a tie: two reasons written in the same millisecond would
+        // otherwise be ordered differently between reads, and the reason of the
+        // day is picked by position.
+        return Reason.find({}).sort({ createdAt: -1, _id: -1 }).lean();
     }
 
     async function add({ text, author }) {
