@@ -3,6 +3,8 @@ import { Pencil } from 'lucide-react';
 
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../../components/ui/sheet';
 import { ProgressRing } from '../../components/ui/progress';
+import { Card, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { useSetUs, useUs } from '../../hooks/useLove';
 import { formatTogether } from '../../utils/time';
 import type { Today } from '../../types';
@@ -48,39 +50,43 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
 
     return (
         <>
-            <section className="glass @container/us has-[:focus-visible]:ring-1 has-[:focus-visible]:ring-lamp/50 mb-5 p-5">
-                <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                        <h2 className="font-display text-sm font-semibold text-dust">Us</h2>
-                        <p className="love-text mt-1 font-display text-xl leading-tight font-bold @[22rem]/us:text-2xl">
-                            {us ? formatTogether(us.startDate) : '…'}
-                        </p>
-                        <p className="mt-0.5 text-xs text-dust">together</p>
+            <Card className="has-[:focus-visible]:ring-1 has-[:focus-visible]:ring-lamp/50">
+                <div>
+                    <div className="flex items-start justify-between gap-4">
+                        <div className="min-w-0">
+                            <CardTitle>Us</CardTitle>
+                            <p className="love-text mt-1 font-display text-xl leading-tight font-bold @[22rem]/card:text-2xl">
+                                {us ? formatTogether(us.startDate) : '…'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-dust">together</p>
 
-                        <button
-                            type="button"
-                            aria-label="Edit when we started"
-                            onClick={openSheet}
-                            className="btn-soft mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs"
-                        >
-                            <Pencil size={12} aria-hidden="true" />
-                            Edit
-                        </button>
+                            <Button
+                                type="button"
+                                variant="soft"
+                                size="sm"
+                                aria-label="Edit when we started"
+                                onClick={openSheet}
+                                className="mt-3 gap-1.5"
+                            >
+                                <Pencil size={12} aria-hidden="true" />
+                                Edit
+                            </Button>
+                        </div>
+
+                        <ProgressRing value={percent} size={68} strokeWidth={5} className="shrink-0">
+                            <span className="font-display text-[0.7rem] leading-none font-bold text-chalk">
+                                {daysAway}
+                            </span>
+                            <span className="sr-only"> days to the next anniversary</span>
+                        </ProgressRing>
                     </div>
-
-                    <ProgressRing value={percent} size={68} strokeWidth={5} className="shrink-0">
-                        <span className="font-display text-[0.7rem] leading-none font-bold text-chalk">
-                            {daysAway}
-                        </span>
-                        <span className="sr-only"> days to the next anniversary</span>
-                    </ProgressRing>
+                    <p className="mt-3 text-xs text-dust">
+                        {daysAway === 0
+                            ? 'Your anniversary is today.'
+                            : `${daysAway} day${daysAway === 1 ? '' : 's'} to the next anniversary`}
+                    </p>
                 </div>
-                <p className="mt-3 text-xs text-dust">
-                    {daysAway === 0
-                        ? 'Your anniversary is today.'
-                        : `${daysAway} day${daysAway === 1 ? '' : 's'} to the next anniversary`}
-                </p>
-            </section>
+            </Card>
 
             <Sheet
                 open={open}
@@ -111,22 +117,24 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
                     )}
 
                     <div className="mt-1 flex gap-2">
-                        <button
+                        <Button
                             type="button"
+                            variant="soft"
+                            className="flex-1"
                             onClick={() => setOpen(false)}
                             disabled={setUs.isPending}
-                            className="btn-soft flex-1 rounded-full px-4 py-2.5 text-sm disabled:opacity-60"
                         >
                             Cancel
-                        </button>
-                        <button
+                        </Button>
+                        <Button
                             type="button"
+                            variant="default"
+                            className="flex-1"
                             onClick={handleSave}
                             disabled={!draft || setUs.isPending}
-                            className="btn-love flex-1 rounded-full px-4 py-2.5 text-sm disabled:opacity-40"
                         >
                             {setUs.isPending ? 'Saving…' : 'Save'}
-                        </button>
+                        </Button>
                     </div>
                 </SheetContent>
             </Sheet>

@@ -13,8 +13,11 @@ test('the bottom bar has exactly five sections, in order', () => {
     assert.deepEqual(nav.SECTIONS.map((s) => s.label), ['Today', 'Chat', 'Moments', 'Letters', 'More']);
 });
 
-test('More holds Story and List', () => {
-    assert.deepEqual(nav.MORE_SCREENS.map((s) => [s.id, s.label]), [['story', 'Story'], ['list', 'List']]);
+test('More holds Story, List and Reasons', () => {
+    assert.deepEqual(
+        nav.MORE_SCREENS.map((s) => [s.id, s.label]),
+        [['story', 'Story'], ['list', 'List'], ['reasons', 'Reasons']]
+    );
 });
 
 test('the four main screens each light up their own section', () => {
@@ -23,9 +26,10 @@ test('the four main screens each light up their own section', () => {
     }
 });
 
-test('Story and List light up More', () => {
+test('Story, List and Reasons light up More', () => {
     assert.equal(nav.sectionFor('story'), 'more');
     assert.equal(nav.sectionFor('list'), 'more');
+    assert.equal(nav.sectionFor('reasons'), 'more');
 });
 
 test('every screen belongs to a section shown in the bar', () => {

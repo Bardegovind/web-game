@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
 
 import { cn } from '@/lib/utils';
 
@@ -6,17 +7,31 @@ import { cn } from '@/lib/utils';
  * shadcn's Card, resting on the room's own glass rather than a flat surface.
  *
  * `@container/card` lets a card's own content reflow by the card's width, not
- * the viewport's — useful once a card sits in a grid on a wide screen. Nothing
- * inside `Today` currently needs a breakpoint that narrow, so nothing queries
- * it yet; it costs nothing to have ready.
+ * the viewport's — useful once a card sits in a grid on a wide screen, which
+ * `Today`'s activity cards now do.
+ *
+ * `variant: "edge"` is the gradient-ring treatment (`.glass-edge`) reserved
+ * for the one card that arrives unasked — a pending nudge — kept as a cva
+ * variant rather than a class sprinkled at the call site, so any future card
+ * that wants to read as "arrived" reaches for the same name.
  */
-function Card({ className, ...props }: ComponentProps<'div'>) {
+const cardVariants = cva('@container/card flex flex-col gap-4 p-5 text-foreground', {
+    variants: {
+        variant: {
+            default: 'glass',
+            edge: 'glass glass-edge',
+        },
+    },
+    defaultVariants: { variant: 'default' },
+});
+
+function Card({
+    className,
+    variant,
+    ...props
+}: ComponentProps<'div'> & VariantProps<typeof cardVariants>) {
     return (
-        <div
-            data-slot="card"
-            className={cn('glass @container/card flex flex-col gap-4 p-5 text-foreground', className)}
-            {...props}
-        />
+        <div data-slot="card" className={cn(cardVariants({ variant, className }))} {...props} />
     );
 }
 
@@ -65,4 +80,4 @@ function CardFooter({ className, ...props }: ComponentProps<'div'>) {
     return <div data-slot="card-footer" className={cn('flex items-center gap-2', className)} {...props} />;
 }
 
-export { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter };
+export { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter, cardVariants };

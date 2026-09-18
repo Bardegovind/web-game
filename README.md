@@ -126,7 +126,7 @@ frontend/
     components/ui/      shadcn/ui components, themed to the chamber
     lib/utils.ts        cn(): merges Tailwind classes
     presence/           pure: when to announce arrivals, and who counts as online
-    features/           chat, memories, today, letters, story, bucket
+    features/           chat, memories, today, letters, story, bucket, reasons
     stores/             Zustand: auth, chat, presence
     hooks/              TanStack Query: every screen's data
     socket/             the realtime client and the protocol names
@@ -171,6 +171,10 @@ before the round trip can be reconciled instead of appearing twice.
 - **M4** reactions, replies, read receipts, optimistic send
 - **M5** installable as a PWA; push is wired and waits on keys and HTTPS
 - **M6** Redis adapter proven across two instances, security headers, graceful shutdown
+- **M7** three small ways to keep saying it: **Us** (days together, counting down to
+  the next anniversary), a jar of **Reasons** either of you can drop a note into or
+  take back out, and **Thinking of you** — one tap sends a heart, waiting on Today
+  until she is there to catch it
 
 ### Installing it on a phone
 

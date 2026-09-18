@@ -1,4 +1,4 @@
-import { BookHeart, ListChecks, type LucideIcon } from 'lucide-react';
+import { BookHeart, HeartHandshake, ListChecks, type LucideIcon } from 'lucide-react';
 
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@/components/ui/sheet';
 import { MORE_SCREENS, type Screen } from './navigation';
@@ -6,6 +6,7 @@ import { MORE_SCREENS, type Screen } from './navigation';
 const ICONS: Partial<Record<Screen, LucideIcon>> = {
     story: BookHeart,
     list: ListChecks,
+    reasons: HeartHandshake,
 };
 
 export function MoreSheet({

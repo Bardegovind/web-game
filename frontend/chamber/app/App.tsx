@@ -15,6 +15,7 @@ import { Today } from '../features/today/Today';
 import { Letters } from '../features/letters/Letters';
 import { Story } from '../features/story/Story';
 import { Bucket } from '../features/bucket/Bucket';
+import { Reasons } from '../features/reasons/Reasons';
 
 import { BottomNav } from './BottomNav';
 import { MoreSheet } from './MoreSheet';
@@ -235,6 +236,7 @@ export function App() {
                 {screen === 'letters' && <Letters />}
                 {screen === 'story' && <Story />}
                 {screen === 'list' && <Bucket />}
+                {screen === 'reasons' && <Reasons />}
 
                 {screen === 'chat' && (
                     <div className="flex h-full min-h-0 md:gap-3 md:px-4 md:pt-1 md:pb-4">
