@@ -6,16 +6,19 @@ import { ProgressRing } from '../../components/ui/progress';
 import { Card, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { useSetUs, useUs } from '../../hooks/useLove';
-import { formatTogether } from '../../utils/time';
+import { formatMoment, formatTogether } from '../../utils/time';
 import type { Today } from '../../types';
 
-/** `<input type="date">` wants "yyyy-mm-dd" in local time, not an ISO instant. */
-function toDateInputValue(value: string | Date): string {
+/**
+ * `<input type="datetime-local">` wants "yyyy-mm-ddThh:mm" in local time, not
+ * an ISO instant — and it is a datetime rather than a date because people know
+ * the minute they met, and a date-only field throws that away.
+ */
+function toDateTimeInputValue(value: string | Date): string {
     const date = value instanceof Date ? value : new Date(value);
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, '0');
-    const d = String(date.getDate()).padStart(2, '0');
-    return `${y}-${m}-${d}`;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+        + `T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 /**
@@ -37,8 +40,13 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
     // is enough for a ring that only has to feel like it's closing in.
     const percent = Math.min(100, Math.max(0, ((365 - daysAway) / 365) * 100));
 
+    // The exact moment, once they have set one: "17 April 2024 at 1:46 PM".
+    // Until then the same line says where the count is coming from instead —
+    // their first message — so a number on the card is never unexplained.
+    const met = us && us.source !== 'today' ? formatMoment(us.startDate) : '';
+
     function openSheet() {
-        setDraft(us ? toDateInputValue(us.startDate) : toDateInputValue(new Date()));
+        setDraft(us ? toDateTimeInputValue(us.startDate) : toDateTimeInputValue(new Date()));
         setUs.reset();
         setOpen(true);
     }
@@ -59,6 +67,12 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
                                 {us ? formatTogether(us.startDate) : '…'}
                             </p>
                             <p className="mt-0.5 text-xs text-dust">together</p>
+                            {met && (
+                                <p className="mt-1.5 text-xs text-dust/90">
+                                    {us?.source === 'set' ? 'Met ' : 'Counting from your first message, '}
+                                    <span className="text-lamp">{met}</span>
+                                </p>
+                            )}
 
                             <Button
                                 type="button"
@@ -107,16 +121,16 @@ export function UsCard({ today, sheetContainer }: { today: Today; sheetContainer
                 }}
             >
                 <SheetContent container={sheetContainer}>
-                    <SheetTitle>When we started</SheetTitle>
+                    <SheetTitle>When we met</SheetTitle>
                     <SheetDescription className="sr-only">
-                        Set the day the two of you count from.
+                        Set the day and the time the two of you count from.
                     </SheetDescription>
 
                     <input
-                        type="date"
-                        aria-label="Start date"
+                        type="datetime-local"
+                        aria-label="When we met"
                         value={draft}
-                        max={toDateInputValue(new Date())}
+                        max={toDateTimeInputValue(new Date())}
                         onChange={(e) => setDraft(e.target.value)}
                         className="field mt-1 w-full rounded-xl px-3.5 py-2.5 text-sm"
                     />

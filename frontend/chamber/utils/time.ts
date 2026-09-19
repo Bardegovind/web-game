@@ -74,6 +74,21 @@ export function formatLastSeen(value: string | Date | null): string {
     return formatDayLabel(date);
 }
 
+/**
+ * "17 April 2024 at 1:46 PM" — a fixed moment, said in full.
+ *
+ * Deliberately not `formatDayLabel`: that one is for a stream of messages and
+ * says "Today", which is true for an hour and wrong forever after. The day
+ * they met is a fact, so it always carries its date, its year and its time.
+ */
+export function formatMoment(value: string | Date | null | undefined): string {
+    const date = toDate(value);
+    if (!date) return '';
+
+    const month = MONTHS[date.getMonth()] ?? '';
+    return `${date.getDate()} ${month} ${date.getFullYear()} at ${formatTime(date)}`;
+}
+
 /** "1 year, 2 months, 6 days" — a calendar-aware breakdown, not a division. */
 export function formatTogether(startDate: string | Date | null, now?: Date): string {
     const start = toDate(startDate);

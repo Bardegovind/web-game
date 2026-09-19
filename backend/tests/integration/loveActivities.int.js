@@ -182,6 +182,32 @@ test('love activities', async (t) => {
         assert.equal(new Date(seen.body.startDate).toISOString().slice(0, 10), '2024-01-01');
     });
 
+    await t.test('the time of day they met is kept, not rounded away to midnight', async () => {
+        // "17 April 2024, 1:46 pm" is how a couple remembers it. Storing only
+        // the date would quietly lose half of what they told us.
+        const set = await call(himToken, 'PUT', '/api/chamber/us', { date: '2024-04-17T13:46:00' });
+        assert.equal(set.status, 200);
+
+        const saved = new Date(set.body.startDate);
+        assert.equal(saved.getHours(), 13);
+        assert.equal(saved.getMinutes(), 46);
+
+        const seenByHer = new Date((await call(herToken, 'GET', '/api/chamber/us')).body.startDate);
+        assert.equal(seenByHer.getHours(), 13, 'she sees the same minute he saved');
+        assert.equal(seenByHer.getMinutes(), 46);
+    });
+
+    await t.test('the count is still whole days, whatever the clock says', async () => {
+        const { body } = await call(herToken, 'GET', '/api/chamber/us');
+
+        const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+        const expected = Math.round((midnight(new Date()) - midnight(new Date(2024, 3, 17))) / 86400000);
+
+        assert.equal(body.daysTogether, expected, 'an afternoon start is not most of a day short');
+        assert.equal(new Date(body.nextAnniversary.date).getMonth(), 3, 'the anniversary is still in April');
+        assert.equal(new Date(body.nextAnniversary.date).getDate(), 17);
+    });
+
     let firstReasonId = null;
 
     await t.test('the jar: either of them can add, both can see', async () => {

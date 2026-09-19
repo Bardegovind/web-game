@@ -84,3 +84,18 @@ test('last seen reads in plain words', () => {
     assert.equal(T.formatLastSeen(justNow), 'just now');
     assert.equal(T.formatLastSeen(earlier), '8 minutes ago');
 });
+
+test('the moment they met keeps the date, the year and the time of day', () => {
+    assert.equal(T.formatMoment(at(2024, 3, 17, 13, 46)), '17 April 2024 at 1:46 PM');
+});
+
+test('a moment earlier today still says the date, not "Today"', () => {
+    // formatDayLabel is for a stream of messages; an anchor date is a fact,
+    // and "Today at 9:00 AM" stops being true tomorrow.
+    assert.equal(T.formatMoment(at(2026, 8, 11, 9, 0)), '11 September 2026 at 9:00 AM');
+});
+
+test('a moment with nothing in it formats to nothing', () => {
+    assert.equal(T.formatMoment(null), '');
+    assert.equal(T.formatMoment('not a date'), '');
+});
