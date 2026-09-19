@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
 import { useAnswerQuestion, useQuestion, useToday } from '../../hooks/useChamber';
+import { useConversations } from '../../hooks/useConversations';
 import { useMarkNudgesSeen, useSendNudge } from '../../hooks/useLove';
 import { useAuthStore } from '../../stores/authStore';
 import { Skeleton } from '../../components/Skeleton';
@@ -43,6 +44,10 @@ export function Today({
     const answer = useAnswerQuestion();
     const [draft, setDraft] = useState('');
     const nudge = useSendNudge();
+    // Whoever else is in here. Named in the copy, because "sends a heart" does
+    // not say who catches it — and that was the first thing asked about it.
+    const { data: conversations } = useConversations();
+    const them = conversations?.find((c) => c.username !== me)?.username ?? null;
     const markSeen = useMarkNudgesSeen();
     const [nudgeHint, setNudgeHint] = useState<string | null>(null);
 
@@ -188,7 +193,10 @@ export function Today({
                         <div className="min-w-0">
                             <CardTitle>Thinking of you</CardTitle>
                             <p className="mt-1 text-xs text-dust" role={nudgeHint ? 'alert' : undefined}>
-                                {nudgeHint ?? 'One tap sends a heart, right now.'}
+                                {nudgeHint
+                                    ?? (them
+                                        ? `One tap, and ${them} sees a heart from you.`
+                                        : 'One tap, and they see a heart from you.')}
                             </p>
                         </div>
                         <Button
