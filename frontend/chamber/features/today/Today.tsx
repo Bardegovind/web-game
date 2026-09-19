@@ -81,11 +81,17 @@ export function Today({
                         icon: <HeartGlyph size={12} className="text-heart" />,
                     });
                 } else {
+                    // Every tap answers in the same voice a sent one does. The
+                    // hint alone is 12px of grey where a caption already sits,
+                    // which reads as nothing having happened at all.
                     setNudgeHint('Just sent one — give it a minute.');
+                    toast('Just sent one — give it a minute.');
                 }
             },
             onError: (error) => {
-                setNudgeHint(error instanceof Error ? error.message : "That didn't send.");
+                const message = error instanceof Error ? error.message : "That didn't send.";
+                setNudgeHint(message);
+                toast.error(message);
             },
         });
     }

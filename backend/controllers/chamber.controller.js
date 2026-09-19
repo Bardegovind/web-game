@@ -6,6 +6,7 @@ const BucketItem = require('../models/BucketItem');
 const Question = require('../models/Question');
 const GalleryItem = require('../models/GalleryItem');
 const User = require('../models/User');
+const ChamberUser = require('../models/ChamberUser');
 const Message = require('../models/Message');
 const UserConversation = require('../models/UserConversation');
 const Relationship = require('../models/Relationship');
@@ -36,10 +37,24 @@ function fail(res, error, status = 400) {
     return res.status(status).json({ success: false, message: error.message });
 }
 
-/** The other person. There are only ever two. */
+/**
+ * The other person. There are only ever two.
+ *
+ * Accounts first, when `USER_A_*` / `USER_B_*` configure them. On the shared
+ * master password there are none — a person becomes a row only once they walk
+ * in — so fall back to whoever has been here, the same way the conversations
+ * list does. Without this, every feature that needs the other person ("send a
+ * heart", "write a letter", the unread counts on Today) answers "there is no
+ * one" on exactly the deployment this runs as.
+ */
 async function partnerOf(username) {
     const other = await User.findOne({ username: { $ne: username } }, { username: 1 }).lean();
-    return other ? other.username : null;
+    if (other) return other.username;
+
+    const walkedIn = await ChamberUser.findOne({ username: { $ne: username } }, { username: 1 })
+        .sort({ createdAt: 1 })
+        .lean();
+    return walkedIn ? walkedIn.username : null;
 }
 
 /**
