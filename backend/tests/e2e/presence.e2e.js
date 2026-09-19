@@ -96,6 +96,20 @@ test('live presence toasts', async (t) => {
         assert.equal(countOf(await toastsSeen(page), ARRIVED), 1);
     });
 
+    await t.test('the header says she is here, from any screen', async () => {
+        // The dot in Chat is only visible once you are in Chat. Whether she is
+        // here is the first thing you want to know on walking in, so the header
+        // carries it on every screen — Today included.
+        const header = page.locator('header [aria-label="radhe is here"]');
+        await header.waitFor({ timeout: 5000 });
+
+        assert.match(
+            await header.locator('span').first().getAttribute('class'),
+            /bg-emerald-400/,
+            'and it is the same green as the dot in Chat'
+        );
+    });
+
     await t.test('their online dot turns green', async () => {
         await page.locator('nav[aria-label="Chamber sections"] [aria-label="Chat"]').click();
         const dot = page.locator('[aria-label="Online"]').first();
@@ -136,6 +150,15 @@ test('live presence toasts', async (t) => {
         assert.equal(countOf(await toastsSeen(page), LEFT), 0, 'not before five seconds');
 
         await waitForToast(page, LEFT, 5000);
+    });
+
+    await t.test('and stops saying it once she has gone', async () => {
+        await page.locator('header [aria-label="radhe is not here"]').waitFor({ timeout: 5000 });
+        assert.equal(
+            await page.locator('header [aria-label="radhe is here"]').count(),
+            0,
+            'a stale green dot would be worse than none'
+        );
     });
 
     await t.test('nothing threw', () => {

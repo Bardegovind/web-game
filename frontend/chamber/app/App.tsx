@@ -27,6 +27,7 @@ import type { Conversation as ConversationSummary } from '../types';
 import { useAuthStore } from '../stores/authStore';
 import { useChatStore } from '../stores/chatStore';
 import { useConversations, conversationsKey } from '../hooks/useConversations';
+import { PeerPresence } from './PeerPresence';
 import { messagesKey } from '../hooks/useMessages';
 import { useToday, todayKey } from '../hooks/useChamber';
 import { pendingNudgeKey } from '../hooks/useLove';
@@ -211,7 +212,10 @@ export function App() {
                             className="chamber-heartbeat mt-0.5 text-heart drop-shadow-[0_0_6px_rgba(255,60,131,0.6)]"
                         />
                     </div>
-                    <p className="mt-1 text-xs text-dust">{username}</p>
+                    <p className="mt-1 flex items-center gap-1.5 text-xs text-dust">
+                        <span className="truncate">{username}</span>
+                        <PeerPresence me={username} conversations={conversations} />
+                    </p>
                 </div>
                 <button
                     type="button"
