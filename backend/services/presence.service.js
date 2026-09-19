@@ -64,11 +64,39 @@ function createPresenceService(deps) {
         const stillHere = await isOnline(username);
 
         await setStored(username, stillHere);
-        if (!stillHere) broadcast(username, false);
+        if (stillHere) return;
+
+        // A phone that drops and reconnects can land its new tab inside the
+        // write above — joining the room and saying "online" — before this
+        // write of "offline" finishes. Announcing "offline" now would be the
+        // last word everyone else hears while they are sitting right there,
+        // so ask the room again. No await between this answer and the
+        // broadcast, so nothing can slip in between the two.
+        if (await isOnline(username)) {
+            await setStored(username, true);
+            return;
+        }
+        broadcast(username, false);
     }
 
+    /**
+     * Who is here, as handed to someone arriving: decided by the rooms, the
+     * same truth `isOnline` uses — never by the stored flag alone. That flag
+     * can be wrong (a reconnect racing a disconnect, another process on the
+     * same database clearing flags at boot, a crash that never ran
+     * `disconnected`), and trusting it is how one person ends up "offline" on
+     * the other's screen while they are sitting right there.
+     */
     async function onlineUsers() {
-        return ChamberUser.find({ isOnline: true }, { username: 1, isOnline: 1, lastSeen: 1 }).lean();
+        const known = await ChamberUser.find({}, { username: 1, lastSeen: 1 }).lean();
+
+        const here = [];
+        for (const row of known) {
+            if (await isOnline(row.username)) {
+                here.push({ username: row.username, isOnline: true, lastSeen: row.lastSeen });
+            }
+        }
+        return here;
     }
 
     /**

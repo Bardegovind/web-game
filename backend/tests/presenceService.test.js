@@ -35,8 +35,8 @@ function fakeChamberUser() {
             Object.assign(row, update.$set || update);
             return row;
         },
-        find() {
-            return { lean: async () => rows.filter((r) => r.isOnline) };
+        find(query = {}) {
+            return { lean: async () => rows.filter((r) => (query.isOnline === true ? r.isOnline : true)) };
         },
     };
 }
@@ -146,4 +146,58 @@ test('reconcileStoredPresence is a no-op when nobody is stored online', async ()
 
     assert.equal(cleared, 0);
     assert.deepEqual(ChamberUser.rows, [], 'nothing should be written when nothing is stale');
+});
+
+/**
+ * The one-sided "offline". His phone drops its connection and reconnects at
+ * once. The old tab's disconnect checks the room — empty, the new tab has not
+ * joined yet — and starts writing "offline" to the database. The reconnect
+ * lands inside that round trip and says "online". Then the stale write
+ * finishes and announces "offline" to everyone: the last word her screen
+ * hears, while he is sitting right there.
+ */
+test('a reconnect that lands during the offline write does not leave them marked offline', async () => {
+    const rooms = { [roomFor('him')]: [] }; // his old tab has just gone
+    const io = fakeIo(rooms);
+    const ChamberUser = fakeChamberUser();
+    const presence = createPresenceService({ io, ChamberUser });
+
+    const write = ChamberUser.findOneAndUpdate;
+    let reconnected = false;
+    ChamberUser.findOneAndUpdate = async function (query, update, opts) {
+        if (!reconnected && update.$set && update.$set.isOnline === false) {
+            reconnected = true;
+            rooms[roomFor('him')] = [{ id: 's2' }]; // the new tab joins…
+            await presence.connected('him'); //        …and says he is here
+        }
+        return write.call(this, query, update, opts);
+    };
+
+    await presence.disconnected('him');
+
+    const said = io.emitted.filter((e) => e.payload && e.payload.username === 'him');
+    assert.equal(said.at(-1).payload.isOnline, true, 'the last thing anyone hears is that he is here');
+    assert.equal(
+        ChamberUser.rows.find((r) => r.username === 'him').isOnline,
+        true,
+        'and the stored flag agrees, so the next person to arrive is told the same'
+    );
+});
+
+/**
+ * Whoever arrives is handed a list of who is here. It came from the stored
+ * flag, which can be wrong — that race, another process on the same database
+ * clearing flags at boot, a crash that never ran `disconnected`. The rooms are
+ * what `isOnline` already trusts; the list has to agree with them.
+ */
+test('the list handed to someone arriving is who is connected, not what a stale flag says', async () => {
+    const io = fakeIo({ [roomFor('him')]: [{ id: 's1' }] }); // he is connected
+    const ChamberUser = fakeChamberUser();
+    ChamberUser.rows.push({ username: 'him', isOnline: false }); // but something wrote him off
+    ChamberUser.rows.push({ username: 'her', isOnline: true }); //  and she has actually gone
+    const presence = createPresenceService({ io, ChamberUser });
+
+    const listed = (await presence.onlineUsers()).map((u) => u.username);
+
+    assert.deepEqual(listed, ['him']);
 });
