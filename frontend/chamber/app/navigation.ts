@@ -5,10 +5,10 @@
  * More, so the bar never scrolls sideways on a phone.
  */
 
-export type Screen = 'today' | 'chat' | 'moments' | 'letters' | 'story' | 'list' | 'reasons';
+export type Screen = 'today' | 'chat' | 'moments' | 'letters' | 'story' | 'list' | 'reasons' | 'reels';
 export type Section = 'today' | 'chat' | 'moments' | 'letters' | 'more';
 
-export const SCREENS: ReadonlyArray<Screen> = ['today', 'chat', 'moments', 'letters', 'story', 'list', 'reasons'];
+export const SCREENS: ReadonlyArray<Screen> = ['today', 'chat', 'moments', 'letters', 'story', 'list', 'reasons', 'reels'];
 
 export const SECTIONS: ReadonlyArray<{ id: Section; label: string }> = [
     { id: 'today', label: 'Today' },
@@ -18,12 +18,13 @@ export const SECTIONS: ReadonlyArray<{ id: Section; label: string }> = [
     { id: 'more', label: 'More' },
 ];
 
-const MORE: ReadonlyArray<Screen> = ['story', 'list', 'reasons'];
+const MORE: ReadonlyArray<Screen> = ['story', 'list', 'reasons', 'reels'];
 
 export const MORE_SCREENS: ReadonlyArray<{ id: Screen; label: string }> = [
     { id: 'story', label: 'Story' },
     { id: 'list', label: 'List' },
     { id: 'reasons', label: 'Reasons' },
+    { id: 'reels', label: 'Reels' },
 ];
 
 export function sectionFor(screen: Screen): Section {
