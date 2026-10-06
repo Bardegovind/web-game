@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth.routes');
 const galleryRoutes = require('./routes/gallery.routes');
 const chatRoutes = require('./routes/chat.routes');
 const chamberRoutes = require('./routes/chamber.routes');
+const instagramRoutes = require('./routes/instagram/instagram.routes');
 
 const fs = require('fs');
 
@@ -76,6 +77,7 @@ function createApp(options) {
     app.use('/api/gallery', galleryRoutes);
     app.use('/api/chat', chatRoutes);
     app.use('/api/chamber', chamberRoutes);
+    app.use('/api/integrations/instagram', instagramRoutes);
 
     app.get('/api/health', (req, res) => {
         res.json({ status: 'ok', timestamp: new Date().toISOString() });

@@ -16,6 +16,7 @@ import { Letters } from '../features/letters/Letters';
 import { Story } from '../features/story/Story';
 import { Bucket } from '../features/bucket/Bucket';
 import { Reasons } from '../features/reasons/Reasons';
+import { InstagramReelsPage } from '../features/instagram_reels/InstagramReelsPage';
 
 import { BottomNav } from './BottomNav';
 import { MoreSheet } from './MoreSheet';
@@ -243,6 +244,7 @@ export function App() {
                 {screen === 'story' && <Story />}
                 {screen === 'list' && <Bucket />}
                 {screen === 'reasons' && <Reasons />}
+                {screen === 'reels' && <InstagramReelsPage />}
 
                 {screen === 'chat' && (
                     <div className="flex h-full min-h-0 md:gap-3 md:px-4 md:pt-1 md:pb-4">
